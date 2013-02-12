@@ -142,6 +142,7 @@ public class KThread {
 		Lib.debug(dbgThread,
 				"Forking thread: " + toString() + " Runnable: " + target);
 
+		// intStatus is the old status. Is a boolean. True means interrupts enabled. ~JE
 		boolean intStatus = Machine.interrupt().disable();
 
 		tcb.start(new Runnable() {
