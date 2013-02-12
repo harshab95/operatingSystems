@@ -39,7 +39,7 @@ public final class TCB {
 	 */
 	public static void givePrivilege(Privilege privilege) {
 		TCB.privilege = privilege;
-		privilege.tcb = new TCBPrivilege();
+		privilege.tcb = new TCBPrivilege();	/// TODO Now, you have privilege to associate threads to current TCB and authorize thread destruction.
 	}
 
 	/**

@@ -34,7 +34,7 @@ public class KThread {
 	 * @return	the current thread.
 	 */
 	public static KThread currentThread() {
-		Lib.assertTrue(currentThread != null);
+		Lib.assertTrue(currentThread != null);	/// TODO If no threads ready, run Idle thread.   Thus, always thread running.
 		return currentThread;
 	}
 
