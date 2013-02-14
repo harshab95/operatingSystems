@@ -32,9 +32,9 @@ public class Condition2 {
 	 */
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-
+		
 		conditionLock.release();
-
+		
 		conditionLock.acquire();
 	}
 
