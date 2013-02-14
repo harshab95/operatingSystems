@@ -206,6 +206,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public int getEffectivePriority() {
 			// implement me
+			//Should be one line as it just needs to returned the cached value
 			return priority;
 		}
 
