@@ -122,28 +122,113 @@ public class PriorityScheduler extends Scheduler {
 		return (ThreadState) thread.schedulingState;
 	}
 
+	/* Implemented a PriorityComparator for our PriorityThreadQueue, a
+	 *  subclass of ThreadQueue. 
+	 *  */
+	private class PriorityComparator implements Comparator<KThread> {
+		public int compare(KThread kt1, KThread kt2) {
+			int kt1p= kt1.schedulingState.getEffectivePriority();
+			int kt2p = kt2.schedulingState.getEffectivePriority();
+			if (kt1p == kt2p) {
+				return 0;
+			} 
+			else if (kt1p < kt2p) {
+				return -1;
+			}
+			else {
+				return 1;
+			}
+		}
+
+		public boolean equals(Object o) {
+			return o.equals(this);
+		}
+	}
+
 	/**
 	 * A <tt>ThreadQueue</tt> that sorts threads by priority.
 	 */
 	protected class PriorityQueue extends ThreadQueue {
+		private KThread currentThread = null;
+		private PriorityQueue<KThread> localThreads = null;
+		private KThread randomChosenNextThread = null;
+		private Hashtable queueEntryTimes = null;
+
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
+			localThreads = new PriorityQueue<KThreads>;
+			localThreads.comparator = new PriorityComparator();
+			currentThread = null;
+			queueEntryTimes = new HashTable();
 		}
 
+		/*
+		 * Getter for the currentThread. used to construct the parent / child tree
+		 * of a ThreadState which as a system, helps set and update the effective 
+		 * priorities of Queues
+		 */
+		public KThread getCurrentThread()  {
+			return currentThread;
+		}
+		
+		/**
+		 * Puts a thread on the waitQueue so it can wait for access to be the current running / active 
+		 * thread. Note that this may be for either a lock, or a ready (scheduling) Queue.
+		 * Once a thread is waiting, the currentThread must have its priority updated, in the case
+		 * that @param thread 's priority is higher than its current effective priority.
+		 *  
+		 * @param thread is the thread that is waiting for access.
+		 */
 		public void waitForAccess(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
+
+			//To refresh the priority queue, must remove and readd
+			if (currentThread != null) {
+				localThreads.remove(currentThread);
+				curThreadState = getThreadState(currentThread); 
+				curThreadState.parents.add(thread);
+				curThreadState.calculateEffectivenessPriority();
+				localThreads.add(currentThread);
+			}	
+			queueEntryTimes.put(thread, Machine.timer.getTime() );
+			localThreads.add(thread);
+			// So the threadState can access it's priorities.
 			getThreadState(thread).waitForAccess(this);
 		}
 
 		public void acquire(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
+			
+			//TODO Make sure no thread currently running ?
+			assert localThreads.size() == 0;
+			assert currentThread == null;
+			localThreads.add(thread);
+			currentThread = thread;
+			
 			getThreadState(thread).acquire(this);
 		}
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me
-			return null;
+
+			if (localThreads.peek() == null) {
+				return null;
+			}
+			
+			KThread t;
+			if (randomChosenNextThread != null) {
+				t = randomChosenThread;
+			} else {
+				t = pickNextThread();
+			}
+			// Remove the next thread from the parents list of child (currentThread)
+			currentThread.scheduledState.parents.remove(t);
+			getThreadState(currentThread).calculateEffectivePriority();
+			
+			currentThread = t;
+			randomChosenThread = null;
+			return t;
 		}
 
 		/**
@@ -155,7 +240,34 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected ThreadState pickNextThread() {
 			// implement me
-			return null;
+			
+			//TODO disableIterrupts ?
+			
+			// Catch1: No more threads in queue, return
+			if (localThreads.peek() == null) {
+				return null;
+			}
+			// Catch2: Already set a thread to return
+			if (randomChosenThread != null) {
+				return randomChosenThread;
+			}
+			
+			// Must have at least 1 KThread in queue and have not picked the next thread
+			int highestPriority = getThreadEffectivePriority(localThreads.peek());
+			ArrayCollection<KThread> highestPriorityThreads = new ArrayCollection<KThread>();
+			while (localThreads.peek() != null) {
+				t = localThreads.poll();
+				if (getThreadEffectivePriority(t) == highestPriority) {
+					highestPriorityThreads.add(t);
+				}
+			}
+			if (highestPriorityThreads.size() > 1) {
+				randomChosenNextThread = chooseThreadLongestWaitTime(queueEntryTimes);
+			} else {
+				// Only 1 KThread with highest priority
+				randomChosenNextThread = highestPriorityThreads.remove(0);
+			}	
+			return randomChosenNextThread;
 		}
 
 		public void print() {
@@ -178,6 +290,11 @@ public class PriorityScheduler extends Scheduler {
 	 * @see	nachos.threads.KThread#schedulingState
 	 */
 	protected class ThreadState {
+		protected int effectivePriority = -1;
+		protected ArrayCollection<ThreadState> parents = null;
+		protected KThread child = null;
+		protected PriorityQueue targetQueue = null;
+		
 		/**
 		 * Allocate a new <tt>ThreadState</tt> object and associate it with the
 		 * specified thread.
@@ -207,7 +324,7 @@ public class PriorityScheduler extends Scheduler {
 		public int getEffectivePriority() {
 			// implement me
 			//Should be one line as it just needs to returned the cached value
-			return priority;
+			return effectivePriority;
 		}
 
 		/**
@@ -220,10 +337,29 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
-
+			if (child != null) {
+				getThreadState(child).calculateEffectivePriority();
+			}
 			// implement me
 		}
 
+		/** 
+		 * JE  to recalculate the effective priority of a thread
+		 */
+		public void calculateEffectivePriority() {
+			highestPriority = -infinity;
+			for thread in parents {
+				if (getThreadState(thread).getEffectivePriority()) > highestPriority) {
+					highestPriority = getThreadState(thread).getEffectivePriority()
+				}
+			}
+			this.effectivePriority= highestPriority;
+			
+			if (child != null) {
+				( (ThreadState) child.scheduledState).calculateEffectivePriority();
+			}
+			return;
+		}
 		/**
 		 * Called when <tt>waitForAccess(thread)</tt> (where <tt>thread</tt> is
 		 * the associated thread) is invoked on the specified priority queue.
@@ -238,6 +374,9 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
+			targetQueue = waitQueue;
+			child = waitQueue.getCurrentThread();
+			
 		}
 
 		/**
@@ -252,6 +391,12 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void acquire(PriorityQueue waitQueue) {
 			// implement me
+			targetQueue = waitQueue;
+			if (child != null) {
+				ThreadState childThreadState = (getThreadState(thread).child);
+				childThreadState.parent.remove(thread);
+				child.calculateEffectivePriority();
+			}	
 		}	
 
 		/** The thread with which this object is associated. */	   

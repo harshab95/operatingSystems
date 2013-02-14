@@ -22,6 +22,8 @@ public class Condition2 {
 	 */
 	public Condition2(Lock conditionLock) {
 		this.conditionLock = conditionLock;
+		
+		//waitQueue declaring
 	}
 
 	/**
@@ -32,7 +34,7 @@ public class Condition2 {
 	 */
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		
+		//Disable interrupts
 		conditionLock.release();
 		
 		conditionLock.acquire();
@@ -44,6 +46,9 @@ public class Condition2 {
 	 */
 	public void wake() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
+		/*
+		 * 
+		 */
 	}
 
 	/**
