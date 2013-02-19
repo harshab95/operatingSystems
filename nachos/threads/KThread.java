@@ -152,7 +152,7 @@ public class KThread {
 		});
 
 		ready();
-
+		
 		Machine.interrupt().restore(intStatus);
 	}
 
