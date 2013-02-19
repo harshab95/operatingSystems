@@ -195,6 +195,11 @@ public class KThread {
 
 		currentThread.status = statusFinished;
 
+		//For join
+		if (currentThread().parentThread != null) {
+			currentThread().parentThread.ready();
+		}
+		
 		sleep();
 	}
 
@@ -275,9 +280,14 @@ public class KThread {
 	 */
 	public void join() {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
-
 		Lib.assertTrue(this != currentThread);
-
+		
+		if (status == statusFinished) {
+			return;
+		} else {
+			parentThread = KThread.currentThread();
+			currentThread().sleep();
+		}
 	}
 
 	/**
@@ -445,4 +455,11 @@ public class KThread {
 	private static KThread currentThread = null;
 	private static KThread toBeDestroyed = null;
 	private static KThread idleThread = null;
+	
+	/**
+	 * Added Fields  ****************************************
+	 */
+	/* Added for Part 1 Join */
+	KThread parentThread = null;
+	
 }
