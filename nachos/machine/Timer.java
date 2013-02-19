@@ -15,75 +15,75 @@ import nachos.security.*;
  * 500 ticks.
  */
 public final class Timer {
-    /**
-     * Allocate a new timer.
-     *
-     * @param	privilege      	encapsulates privileged access to the Nachos
-     *				machine.
-     */
-    public Timer(Privilege privilege) {
-	System.out.print(" timer");
-	
-	this.privilege = privilege;
-	
-	timerInterrupt = new Runnable() {
-		public void run() { timerInterrupt(); }
-	    };
-	
-	autoGraderInterrupt = new Runnable() {
-		public void run() {
-		    Machine.autoGrader().timerInterrupt(Timer.this.privilege,
-							lastTimerInterrupt);
-		}
-	    };
+	/**
+	 * Allocate a new timer.
+	 *
+	 * @param	privilege      	encapsulates privileged access to the Nachos
+	 *				machine.
+	 */
+	public Timer(Privilege privilege) {
+		System.out.print(" timer");
 
-	scheduleInterrupt();
-    }
+		this.privilege = privilege;
 
-    /**
-     * Set the callback to use as a timer interrupt handler. The timer
-     * interrupt handler will be called approximately every 500 clock ticks.
-     *
-     * @param	handler		the timer interrupt handler.
-     */
-    public void setInterruptHandler(Runnable handler) {
-	this.handler = handler;
-    }
+		timerInterrupt = new Runnable() {
+			public void run() { timerInterrupt(); }
+		};
 
-    /**
-     * Get the current time.
-     *
-     * @return	the number of clock ticks since Nachos started.
-     */
-    public long getTime() {
-	return privilege.stats.totalTicks;
-    }
+		autoGraderInterrupt = new Runnable() {
+			public void run() {
+				Machine.autoGrader().timerInterrupt(Timer.this.privilege,
+						lastTimerInterrupt);
+			}
+		};
 
-    private void timerInterrupt() {
-	scheduleInterrupt();
-	scheduleAutoGraderInterrupt();
+		scheduleInterrupt();
+	}
 
-	lastTimerInterrupt = getTime();
+	/**
+	 * Set the callback to use as a timer interrupt handler. The timer
+	 * interrupt handler will be called approximately every 500 clock ticks.
+	 *
+	 * @param	handler		the timer interrupt handler.
+	 */
+	public void setInterruptHandler(Runnable handler) {
+		this.handler = handler;
+	}
 
-	if (handler != null)
-	    handler.run();
-    }
+	/**
+	 * Get the current time.
+	 *
+	 * @return	the number of clock ticks since Nachos started.
+	 */
+	public long getTime() {
+		return privilege.stats.totalTicks;
+	}
 
-    private void scheduleInterrupt() {
-	int delay = Stats.TimerTicks;
-	delay += Lib.random(delay/10) - (delay/20);
+	private void timerInterrupt() {
+		scheduleInterrupt();
+		scheduleAutoGraderInterrupt();
 
-	privilege.interrupt.schedule(delay, "timer", timerInterrupt);
-    }
+		lastTimerInterrupt = getTime();
 
-    private void scheduleAutoGraderInterrupt() {
-	privilege.interrupt.schedule(1, "timerAG", autoGraderInterrupt);
-    }
+		if (handler != null)
+			handler.run();
+	}
 
-    private long lastTimerInterrupt;
-    private Runnable timerInterrupt;
-    private Runnable autoGraderInterrupt;
+	private void scheduleInterrupt() {
+		int delay = Stats.TimerTicks;
+		delay += Lib.random(delay/10) - (delay/20);
 
-    private Privilege privilege;
-    private Runnable handler = null;
+		privilege.interrupt.schedule(delay, "timer", timerInterrupt);
+	}
+
+	private void scheduleAutoGraderInterrupt() {
+		privilege.interrupt.schedule(1, "timerAG", autoGraderInterrupt);
+	}
+
+	private long lastTimerInterrupt;
+	private Runnable timerInterrupt;
+	private Runnable autoGraderInterrupt;
+
+	private Privilege privilege;
+	private Runnable handler = null;
 }
