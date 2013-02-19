@@ -150,13 +150,15 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	protected class PriorityQueue extends ThreadQueue {
 		private KThread currentThread = null;
-		private PriorityQueue<KThread> localThreads = null;
+		
+		//TODO check the protection on localThreads
+		protected java.util.PriorityQueue<KThread> localThreads = null;
 		private KThread randomChosenNextThread = null;
 		private Hashtable queueEntryTimes = null;
 
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
-			localThreads = new PriorityQueue<KThreads>();
+			localThreads = new java.util.PriorityQueue<KThread>();
 			localThreads.comparator = new PriorityComparator();
 			currentThread = null;
 			queueEntryTimes = new HashTable();
@@ -273,6 +275,13 @@ public class PriorityScheduler extends Scheduler {
 		public void print() {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			// implement me (if you want)
+		}
+		
+		/**
+		 * CUSTOM METHOD: Checks to see if the Queue is empty.
+		 */
+		public boolean isEmpty() {
+			return localThreads.isEmpty();
 		}
 
 		/**
