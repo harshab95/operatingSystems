@@ -44,7 +44,7 @@ public class Communicator {
 	public void speak(int word) {
 		communicatorLock.acquire();
 		numSpeakers++;
-		while (numListeners == 0 || numSpeakers > 0) {
+		if (numListeners == 0 || numSpeakers > 0) {	// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
 			okToSpeak.sleep();
 		}
 		
@@ -68,7 +68,7 @@ public class Communicator {
 	public int listen() {
 		communicatorLock.acquire();
 		numListeners++;
-		while (numSpeakers == 0 || numListeners > 0) {
+		if (numSpeakers == 0 || numListeners > 0) {	// TODO Same question as if statement in speak().
 			okToListen.sleep();
 		}
 		
