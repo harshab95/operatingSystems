@@ -28,8 +28,8 @@ public class Boat
 		 * OUR CUSTOM TESTS
 		 */
 		int numTests = 0;
-		for(int numChild=2; numChild<5, numChild++) {
-			for(int numAdult=0; numAdult<8, numAdult++) {
+		for(int numChild=2; numChild<5; numChild++) {
+			for(int numAdult=0; numAdult<8; numAdult++) {
 				numTests++;
 				System.out.println("\n ***Test " + numTests + "/24" + "with " + numAdult + " adults, " + numChild + " children***");
 				begin(numAdult, numChild, b);
