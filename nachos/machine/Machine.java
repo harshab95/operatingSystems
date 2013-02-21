@@ -178,7 +178,7 @@ public final class Machine {
 				}
 				else if (arg.equals(customParameter)) {
 					Lib.assertTrue(i < args.length, "switch without argument");
-					testname = (String) testBank.get(args[i++]);
+					//TODO perhaps implement the param extraction
 				}
 			}
 		}
