@@ -29,6 +29,7 @@ public class Boat
 
 		//  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
 		//  	begin(3, 3, b);
+		
 	}
 
 	public static void begin( int adults, int children, BoatGrader b )
@@ -169,5 +170,6 @@ public class Boat
 		bg.AdultRideToMolokai();
 		bg.ChildRideToMolokai();
 	}
+	
 
 }

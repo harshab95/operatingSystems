@@ -1,5 +1,4 @@
 // PART OF THE MACHINE SIMULATION. DO NOT CHANGE.
-/** NOTE THIS IS NOW OUR CUSTOM VERSION OF THE MACHINE.java. Refer to the MachineBackup.java for a clean copy */
 
 package nachos.machine;
 
@@ -8,18 +7,11 @@ import nachos.ag.*;
 
 import java.io.File;
 
-import java.util.HashMap;
-import java.util.Hashtable;
-
 /**
  * The master class of the simulated machine. Processes command line arguments,
  * constructs all simulated hardware devices, and starts the grader.
  */
-public final class Machine {
-	
-	public final static String customParameter = "-@!";
-	public static Hashtable testBank = new Hashtable();
-	
+public final class MachineBackup {
 	/**
 	 * Nachos main entry point.
 	 *
@@ -28,18 +20,11 @@ public final class Machine {
 	public static void main(final String[] args) {
 		System.out.print("nachos 5.0j initializing...");
 
-		Lib.assertTrue(Machine.args == null);
-		Machine.args = args;
-
-		testBank.put("p1", "join");
-		testBank.put("p2", "conditional variables");
-		testBank.put("p3", "alarm");
-		testBank.put("p4", "communicator");
-		testBank.put("p5", "priority scheduler");
-		testBank.put("p6", "boat");
-
+		Lib.assertTrue(MachineBackup.args == null);
+		MachineBackup.args = args;
 
 		processArgs();
+
 		Config.load(configFileName);
 
 		// get the current directory (.)
@@ -73,7 +58,6 @@ public final class Machine {
 
 		autoGrader = (AutoGrader) Lib.constructObject(autoGraderClassName);
 
-		//TODO set autoGrader test?
 		new TCB().start(new Runnable() {
 			public void run() { autoGrader.start(privilege); }
 		});
@@ -175,10 +159,6 @@ public final class Machine {
 				else if (arg.equals("--")) {
 					Lib.assertTrue(i < args.length, "switch without argument");
 					autoGraderClassName = args[i++];
-				}
-				else if (arg.equals(customParameter)) {
-					Lib.assertTrue(i < args.length, "switch without argument");
-					testname = (String) testBank.get(args[i++]);
 				}
 			}
 		}
@@ -311,7 +291,7 @@ public final class Machine {
 	/**
 	 * Prevent instantiation.
 	 */
-	private Machine() {
+	private MachineBackup() {
 	}
 
 	/**
@@ -500,7 +480,7 @@ public final class Machine {
 	private static class MachinePrivilege
 	implements Privilege.MachinePrivilege {
 		public void setConsole(SerialConsole console) {
-			Machine.console = console;
+			MachineBackup.console = console;
 		}
 	}
 

@@ -1,5 +1,7 @@
 package nachos.threads;
 
+import java.util.ArrayList;
+
 import nachos.machine.*;
 
 
@@ -16,9 +18,9 @@ public class Communicator {
 	private int numSpeakers, numListeners;
 	private Lock communicatorLock;
 	private Condition2 okToSpeak, okToListen;
-	
+
 	public final int NO_MESSAGE = -1;
-	
+
 	/**
 	 * Allocate a new communicator.
 	 */
@@ -47,13 +49,13 @@ public class Communicator {
 		if (numListeners == 0 || numSpeakers > 0) {	// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
 			okToSpeak.sleep();
 		}
-		
+
 		// When this point is reached, our speaker has found a listener.
 		transmitMessage(word);
 		numSpeakers--;
 		okToListen.wake();
 		okToSpeak.sleep();	// Need to sleep so we return AFTER message is received.
-		
+
 		// When this point is reached, control is returned to this thread.  Listener should have listened.
 		communicatorLock.release();
 		return;
@@ -71,11 +73,11 @@ public class Communicator {
 		if (numSpeakers == 0 || numListeners > 0) {	// TODO Same question as if statement in speak().
 			okToListen.sleep();
 		}
-		
+
 		// At this point, our listener has found a speaker.
 		okToSpeak.wake();	// Tell speaker to transmit.  We sleep while transmission occurs.
 		okToListen.sleep();
-		
+
 		// At this point, the paired speaker has transmitted the message.  Listener can listen.
 		int toReturn = retrieveMessage();
 		numListeners--;
@@ -105,6 +107,63 @@ public class Communicator {
 		int toReturn = message;
 		message = NO_MESSAGE;
 		return toReturn;
+	}
+
+	/**
+	 * This method is to test our:
+	 * 1) Communicators Part 4
+	 * 2) Condition2.java Part 2
+	 * @return true if it passes the test, false if it doesn't (or if it doesn't return at all)
+	 */
+	static int i;
+	public static boolean selfTest() {
+		KThread[] speakers, listeners;
+		int numTest = 10;
+		//Needs to be declared to be final in order for inner run() { } to access comm 
+		final Communicator comm = new Communicator();
+
+		/*
+		 * Initializing variables
+		 */
+		speakers = new KThread[numTest];
+		listeners = new KThread[numTest];
+		for (i = 0; i < numTest; i++) {
+			speakers[i] = new KThread(new Runnable() {
+				public void run() {
+					comm.speak(i);
+				}
+			});
+		}
+		for (i = 0; i < numTest; i++) {
+			listeners[i] = new KThread(new Runnable() {
+				public void run() {
+					comm.listen();
+				}
+			});
+		}
+		System.out.println("finished initializing");
+		
+		/*
+		 * Forking to run
+		 */
+		for (i = 0; i < numTest; i++) {
+			speakers[i].fork();
+		}
+		for (i = 0; i < numTest; i++) {
+			listeners[i].fork();
+		}
+
+		for (i = 0; i < numTest; i++) {
+			speakers[i].join();
+		}
+		System.out.println("speakers finished joining");
+		
+		for (i = 0; i < numTest; i++) {
+			listeners[i].join();
+		}
+		System.out.println("listeners finished joining");
+		
+		return true;
 	}
 }
 
