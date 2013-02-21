@@ -2,7 +2,6 @@ package nachos.threads;
 
 import java.util.Comparator;
 import java.util.PriorityQueue;
-
 import nachos.machine.*;
 import nachos.threads.PriorityScheduler.ThreadState;
 
@@ -20,12 +19,19 @@ public class Alarm {
 	 */
 	public Alarm() {
 		//TODO check if intiailization goes here before the Machine call
-		threadsWaiting = new PriorityQueue<ThreadAlarmTime>(threadsWaitingInitialCapacity);
+		threadsWaitingUntil = new PriorityQueue<ThreadAlarmTime>(threadsWaitingInitialCapacity);
 		Machine.timer().setInterruptHandler(new Runnable() {
 			public void run() { timerInterrupt(); }
 		});
 	}
-
+	
+	//initialization of variables
+	//PriorityQueue<ThreadAlarmTime> threadsWaiting = null; 	old version
+	
+	int threadsWaitingInitialCapacity = 10;
+	PriorityQueue<ThreadAlarmTime> threadsWaitingUntil = null;
+	Lock pqLock = new Lock();   // Lock for priority queue.
+	
 	/**
 	 * The timer interrupt handler. This is called by the machine's timer
 	 * periodically (approximately every 500 clock ticks). Causes the current
@@ -33,7 +39,13 @@ public class Alarm {
 	 * that should be run.
 	 */
 	public void timerInterrupt() {
-		KThread.currentThread().yield();
+		KThread.currentThread().yield(); //from original code
+		boolean intStatus = Machine.interrupt().disable(); 		//Disable interrupts
+	    while (threadsWaitingUntil.peek().wakeTime <= Machine.timer().getTime()) {
+	    	KThread t = (KThread) threadsWaitingUntil.poll().threadPointer;
+	    	t.ready();	//readyQueue.waitForAccess(t);
+	    }
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 	}
 
 	/**
@@ -52,25 +64,29 @@ public class Alarm {
 	 */
 	public void waitUntil(long x) {
 		// for now, cheat just to get something working (busy waiting is bad)
+		/* old version
 		long wakeTime = Machine.timer().getTime() + x;
-		
 		boolean intStatus = Machine.interrupt().disable();
-		threadsWaiting.add(e)
+		threadsWaiting.add(e);
+		end of old version */ 
+
+	    long wakeTime = Machine.timer().getTime() + x;
+		boolean intStatus = Machine.interrupt().disable();		//Disable interrupts
+		threadsWaitingUntil.add(new ThreadAlarmTime(KThread.currentThread(), wakeTime));
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 	}
 	
-	/* Implemented a LowPriorityComparator to pop lowest priority threads first 
-	 *  
+	/**
+	 *  Implemented a LowPriorityComparator to pop lowest priority threads first 
 	 */
-	private class LowPriorityComparator implements Comparator<ThreadAlarmTime> {
+	class LowPriorityComparator implements Comparator<ThreadAlarmTime> { // was originally private
 		public int compare(ThreadAlarmTime threadAlarm1, ThreadAlarmTime threadAlarm2) {
 			assert threadAlarm1.wakeTimeSet == threadAlarm2.wakeTimeSet == true;
 			if (threadAlarm1.wakeTime == threadAlarm2.wakeTime) {
 				return 0;
-			} 
-			else if (threadAlarm1.wakeTime < threadAlarm2.wakeTime) {
+			} else if (threadAlarm1.wakeTime < threadAlarm2.wakeTime) {
 				return 1;
-			}
-			else {
+			} else {
 				return -1;
 			}
 		}
@@ -80,18 +96,15 @@ public class Alarm {
 		}
 	}
 	
-	protected class ThreadAlarmTime {
+	class ThreadAlarmTime { //was originally protected class
 		KThread threadPointer = null;
 		boolean wakeTimeSet = false;
 		long wakeTime;
-		ThreadAlarmTime(KThread t, long wakeUpTime) {
+		public ThreadAlarmTime(KThread t, long wakeUpTime) {
 			this.threadPointer = t;
 			this.wakeTime = wakeUpTime;
 			this.wakeTimeSet = true;
 		}
 	}
 
-	PriorityQueue<ThreadAlarmTime> threadsWaiting = null;
-	int threadsWaitingInitialCapacity = 10;
 }
-
