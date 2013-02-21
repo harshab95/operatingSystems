@@ -2,9 +2,11 @@ package nachos.threads;
 
 import nachos.machine.*;
 
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.Iterator;
+import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.PriorityQueue;
+import java.util.Comparator;
+import java.util.Enumeration;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -127,8 +129,8 @@ public class PriorityScheduler extends Scheduler {
 	 *  */
 	private class PriorityComparator implements Comparator<KThread> {
 		public int compare(KThread kt1, KThread kt2) {
-			int kt1p= kt1.schedulingState.getEffectivePriority();
-			int kt2p = kt2.schedulingState.getEffectivePriority();
+			int kt1p= ((ThreadState)kt1.schedulingState).getEffectivePriority();
+			int kt2p = ((ThreadState)kt2.schedulingState).getEffectivePriority();
 			if (kt1p == kt2p) {
 				return 0;
 			} 
@@ -150,18 +152,16 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	protected class PriorityQueue extends ThreadQueue {
 		private KThread currentThread = null;
-		
-		//TODO check the protection on localThreads
-		protected java.util.PriorityQueue<KThread> localThreads = null;
+		private java.util.PriorityQueue localThreads = null;
 		private KThread randomChosenNextThread = null;
 		private Hashtable queueEntryTimes = null;
+        private PriorityComparator comparator = null;
 
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
-			localThreads = new java.util.PriorityQueue<KThread>();
-			localThreads.comparator = new PriorityComparator();
+			localThreads = new java.util.PriorityQueue(10, new PriorityComparator());
 			currentThread = null;
-			queueEntryTimes = new HashTable();
+			queueEntryTimes = new Hashtable();
 		}
 
 		/*
@@ -171,6 +171,10 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public KThread getCurrentThread()  {
 			return currentThread;
+		}
+		
+		public void add(KThread thr) {
+			localThreads.add(thr);
 		}
 		
 		/**
@@ -187,12 +191,12 @@ public class PriorityScheduler extends Scheduler {
 			//To refresh the priority queue, must remove and readd
 			if (currentThread != null) {
 				localThreads.remove(currentThread);
-				curThreadState = getThreadState(currentThread); 
-				curThreadState.parents.add(thread);
-				curThreadState.calculateEffectivenessPriority();
+				ThreadState curThreadState = getThreadState(currentThread); 
+				curThreadState.parents.add(getThreadState(thread));
+				curThreadState.calculateEffectivePriority();
 				localThreads.add(currentThread);
 			}	
-			queueEntryTimes.put(thread, Machine.timer.getTime() );
+			queueEntryTimes.put(thread, Machine.timer().getTime() );
 			localThreads.add(thread);
 			// So the threadState can access it's priorities.
 			getThreadState(thread).waitForAccess(this);
@@ -219,19 +223,34 @@ public class PriorityScheduler extends Scheduler {
 			}
 			
 			KThread t;
-			if (randomChosenNextThread != null) {
+            KThread randomChosenThread = randomThread(localThreads);
+			if (randomChosenThread != null) {
 				t = randomChosenThread;
 			} else {
-				t = pickNextThread();
+				t = pickNextThread().thread;
 			}
 			// Remove the next thread from the parents list of child (currentThread)
-			currentThread.scheduledState.parents.remove(t);
+			((ThreadState) currentThread.schedulingState).parents.remove(t);
 			getThreadState(currentThread).calculateEffectivePriority();
 			
 			currentThread = t;
 			randomChosenThread = null;
 			return t;
 		}
+
+        private KThread randomThread(java.util.PriorityQueue pq) {
+            int randomNum = (int) Math.random();
+            int index = ((int) pq.size() * randomNum);
+            java.util.PriorityQueue tempQueue = new java.util.PriorityQueue();
+            for (int i=0; i<index; i++) {
+                tempQueue.add(pq.poll());
+            }
+            KThread thread = (KThread) pq.poll();
+            for (int i=0; i<tempQueue.size(); i++) {
+                pq.add(tempQueue.poll());
+            }
+            return thread;
+        }
 
 		/**
 		 * Return the next thread that <tt>nextThread()</tt> would return,
@@ -250,16 +269,17 @@ public class PriorityScheduler extends Scheduler {
 				return null;
 			}
 			// Catch2: Already set a thread to return
+			KThread randomChosenThread = randomThread(localThreads);
 			if (randomChosenThread != null) {
-				return randomChosenThread;
+				return getThreadState(randomChosenThread);//made new threadstate
 			}
 			
 			// Must have at least 1 KThread in queue and have not picked the next thread
-			int highestPriority = getThreadEffectivePriority(localThreads.peek());
-			ArrayList<KThread> highestPriorityThreads = new ArrayList<KThread>();
+			int highestPriority = ((ThreadState) localThreads.peek()).getEffectivePriority();//changed from getThreadEffectivePriority
+			ArrayList<ThreadState> highestPriorityThreads = new ArrayList<ThreadState>();
 			while (localThreads.peek() != null) {
-				t = localThreads.poll();
-				if (getThreadEffectivePriority(t) == highestPriority) {
+				ThreadState t = (ThreadState) localThreads.poll();
+				if (t.getEffectivePriority() == highestPriority) {//changed from getThreadEffectivePriority
 					highestPriorityThreads.add(t);
 				}
 			}
@@ -267,21 +287,32 @@ public class PriorityScheduler extends Scheduler {
 				randomChosenNextThread = chooseThreadLongestWaitTime(queueEntryTimes);
 			} else {
 				// Only 1 KThread with highest priority
-				randomChosenNextThread = highestPriorityThreads.remove(0);
+				randomChosenNextThread = highestPriorityThreads.remove(0).thread;
 			}	
-			return randomChosenNextThread;
-		}
-
-		public void print() {
-			Lib.assertTrue(Machine.interrupt().disabled());
-			// implement me (if you want)
+			return getThreadState(randomChosenNextThread);
 		}
 		
 		/**
-		 * CUSTOM METHOD: Checks to see if the Queue is empty.
+		 * returns the thread with the longest wait time given a hashtable of entry times.
 		 */
-		public boolean isEmpty() {
-			return localThreads.isEmpty();
+		public KThread chooseThreadLongestWaitTime(Hashtable queueEntryTimes) {
+			Enumeration enumerat = queueEntryTimes.keys();
+			long longestWaitTime = 0;
+			KThread longestWaitingThread = null;
+			while (enumerat.hasMoreElements()) {
+				KThread nextThread = (KThread) enumerat.nextElement();
+				long waitTime = (long) queueEntryTimes.get(nextThread);
+				if (longestWaitTime < waitTime) {
+					longestWaitTime = waitTime;
+					longestWaitingThread = nextThread;
+				}
+			}
+			return longestWaitingThread;
+		}
+		
+		public void print() {
+			Lib.assertTrue(Machine.interrupt().disabled());
+			// implement me (if you want)
 		}
 
 		/**
@@ -356,10 +387,10 @@ public class PriorityScheduler extends Scheduler {
 		 * JE  to recalculate the effective priority of a thread
 		 */
 		public void calculateEffectivePriority() {
-			highestPriority = -infinity;
-			currentThreadParents = this.parents;
+			int highestPriority = (int) Double.POSITIVE_INFINITY;
+			ArrayList currentThreadParents = this.parents;
 			for (int i = 0; i < currentThreadParents.size(); i++) {
-				thread = currentThreadParents.get(i);
+				thread = (KThread) currentThreadParents.get(i);
 				if (getThreadState(thread).getEffectivePriority() > highestPriority) {
 					highestPriority = getThreadState(thread).getEffectivePriority();
 				}
@@ -367,7 +398,7 @@ public class PriorityScheduler extends Scheduler {
 			this.effectivePriority= highestPriority;
 			
 			if (child != null) {
-				( (ThreadState) child.scheduledState).calculateEffectivePriority();
+				( (ThreadState) child.schedulingState).calculateEffectivePriority();
 			}
 			return;
 		}
@@ -386,8 +417,7 @@ public class PriorityScheduler extends Scheduler {
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
 			targetQueue = waitQueue;
-			child = waitQueue.getCurrentThread();
-			
+			child = waitQueue.getCurrentThread();	
 		}
 
 		/**
@@ -404,9 +434,9 @@ public class PriorityScheduler extends Scheduler {
 			// implement me
 			targetQueue = waitQueue;
 			if (child != null) {
-				ThreadState childThreadState = (getThreadState(thread).child);
-				childThreadState.parent.remove(thread);
-				child.calculateEffectivePriority();
+				ThreadState childThreadState = getThreadState(getThreadState(thread).child);
+				childThreadState.parents.remove(thread);
+				getThreadState(child).calculateEffectivePriority();
 			}	
 		}	
 
