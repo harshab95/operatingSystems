@@ -30,6 +30,17 @@ public class Boat
 		//  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
 		//  	begin(3, 3, b);
 		
+		/*
+		 * OUR CUSTOM TESTS
+		 */
+		int numTests = 0;
+		for(int numChild=2; numChild<5; numChild++) {
+			for(int numAdult=0; numAdult<8; numAdult++) {
+				numTests++;
+				System.out.println("\n ***Test " + numTests + "/24" + "with " + numAdult + " adults, " + numChild + " children***");
+				begin(numAdult, numChild, b);
+			}
+		}
 	}
 
 	public static void begin( int adults, int children, BoatGrader b )
