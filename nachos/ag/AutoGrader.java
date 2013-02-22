@@ -47,7 +47,8 @@ public class AutoGrader {
 		kernel =
 				(Kernel) Lib.constructObject(Config.getString("Kernel.kernel"));
 		kernel.initialize(args);
-
+		
+		runTests();
 		run();
 	}
 
@@ -60,7 +61,8 @@ public class AutoGrader {
 		 * ) {
 		 * 	
 		 */
-
+		
+		Boat.selfTest();
 		return true;
 	}
 

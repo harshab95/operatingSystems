@@ -11,25 +11,25 @@ public class Boat
 	public static Condition rider =  new Condition(riderLock);
 	public static Condition pilot =  new Condition(pilotLock);
 	public static boolean childIsPilot;
-	
+
 	public static Lock finishLock = new Lock();
 	public static Condition finishCondition = new Condition(finishLock);
-	
+
 	public static Alarm a = new Alarm();
-	
+
 	public static void selfTest()
 	{
 		BoatGrader b = new BoatGrader();
 
-		System.out.println("\n ***Testing Boats with only 2 children***");
-		begin(0, 2, b); 
+		//System.out.println("\n ***Testing Boats with only 2 children***");
+		//begin(0, 2, b); 
 
 		//	System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
 		//  	begin(1, 2, b);
 
 		//  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
 		//  	begin(3, 3, b);
-		
+
 		/*
 		 * OUR CUSTOM TESTS
 		 */
@@ -37,7 +37,7 @@ public class Boat
 		for(int numChild=2; numChild<5; numChild++) {
 			for(int numAdult=0; numAdult<8; numAdult++) {
 				numTests++;
-				System.out.println("\n ***Test " + numTests + "/24" + "with " + numAdult + " adults, " + numChild + " children***");
+				System.out.println("\n ***Test " + numTests + "/24" + " with " + numAdult + " adults, " + numChild + " children***");
 				begin(numAdult, numChild, b);
 			}
 		}
@@ -54,31 +54,32 @@ public class Boat
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
 		finishLock.acquire();
-	    for(int i=0; i<children; i++) {
-	        Runnable r = new Runnable() {
-	            public void run() {
-	                    ChildItinerary();
-	            }
-	        };
-	        KThread n = new KThread(r);
-	        n.setName(""+i);
-	        n.fork();
-	    }
-	    for(int i=children; i<children+adults; i++) {
-	        Runnable s = new Runnable() {
-	            public void run() {
-	                AdultItinerary();
-	            }
-	        };
-	        KThread n = new KThread(s);
-	        n.setName(""+i);
-	        n.fork();
-	    }
-	    while(numPeopleOnMolokai!=adults+children) {	
-	        finishCondition.sleep();
-	    	finishCondition.wake();
-	    }
-	    KThread.currentThread().finish(); 
+		for(int i=0; i<children; i++) {
+			Runnable r = new Runnable() {
+				public void run() {
+					ChildItinerary();
+				}
+			};
+			KThread n = new KThread(r);
+			n.setName(""+i);
+			n.fork();
+		}
+		for(int i=children; i<children+adults; i++) {
+			Runnable s = new Runnable() {
+				public void run() {
+					AdultItinerary();
+				}
+			};
+			KThread n = new KThread(s);
+			n.setName(""+i);
+			n.fork();
+		}
+		while(numPeopleOnMolokai!=adults+children) {	
+			finishCondition.wake();
+			finishCondition.sleep();
+
+		}
+		KThread.currentThread().finish(); 
 
 	}
 
@@ -87,7 +88,7 @@ public class Boat
 		ActualNumAdultOnOahu++;
 		int numChildOnOahu = ActualNumChildOnOahu;
 		int numAdultOnOahu = ActualNumAdultOnOahu;
-		
+
 		pilotLock.acquire();
 		while(numChildOnOahu != 1 || !boatLocation.equals("Oahu")) {
 			numChildOnOahu = ActualNumChildOnOahu;
@@ -97,9 +98,10 @@ public class Boat
 		ActualNumAdultOnOahu--;
 		numPeopleOnMolokai++;
 		boatLocation = "Molokai";
-		
+		pilot.wake();
 		pilotLock.release();
 		KThread.currentThread().sleep();
+		System.out.println("Thread Finished\n");
 	}
 
 	static void ChildItinerary()
@@ -110,39 +112,51 @@ public class Boat
 		//Sees the number of people on the island
 		int numChildOnOahu = ActualNumChildOnOahu;
 		int numAdultOnOahu = ActualNumAdultOnOahu;
-		
+
 		pilotLock.acquire();
-		//waits for boat to get to Oahu
-		while(!boatLocation.equals("Oahu")) {
-			pilot.sleep();
-		}
-		//Case: Thread is pilot
-		if(!childIsPilot) {
-			childIsPilot = true;
-			//Updates the numbers. Checks into island, sees number of people on Island
-			ActualNumChildOnOahu--;
-			numPeopleOnMolokai++;
-			numChildOnOahu = ActualNumChildOnOahu;
-			numAdultOnOahu = ActualNumAdultOnOahu;
-			bg.ChildRowToMolokai();
-			boatLocation = "Molokai";
-			pilot.wake(); 
-			pilot.sleep();
-		}
-		//Case: Thread is rider
-		else {
-			riderLock.acquire();
-			ActualNumChildOnOahu--;
-			numPeopleOnMolokai++;
-			numChildOnOahu = ActualNumChildOnOahu;
-			numAdultOnOahu = ActualNumAdultOnOahu;
-			bg.ChildRideToMolokai();
-			boatLocation = "Molokai";
-			childIsPilot = false;
-			riderLock.release();
+		System.out.print("Lock acquired \n");
+
+		while(!currentIsland.equals("Oahu")) {
 			pilot.wake();
 			pilot.sleep();
+
+
+			//waits for boat to get to Oahu
+			while(!boatLocation.equals("Oahu")) {
+				pilot.sleep();
+			}
+			//Case: Thread is pilot
+			if(!childIsPilot) {
+				childIsPilot = true;
+				//Updates the numbers. Checks into island, sees number of people on Island
+				bg.ChildRowToMolokai();
+				//boatLocation = "Molokai";
+				pilot.wake(); 
+				pilot.sleep();
+				bg.ChildRowToOahu();
+				boatLocation = "Oahu";
+				numPeopleOnMolokai--;
+				numChildOnOahu = ActualNumChildOnOahu;
+				numAdultOnOahu = ActualNumAdultOnOahu;
+			}
+			//Case: Thread is rider
+			else {
+				riderLock.acquire();
+				ActualNumChildOnOahu--;
+				numPeopleOnMolokai++;
+				numChildOnOahu = ActualNumChildOnOahu;
+				numAdultOnOahu = ActualNumAdultOnOahu;
+				bg.ChildRideToMolokai();
+				boatLocation = "Molokai";
+				childIsPilot = false;
+				riderLock.release();
+				pilot.wake();
+				pilotLock.release();
+				KThread.currentThread().sleep();
+				System.out.println("Thread Finished\n");
+			}
 		}
+		//at this point, either child is done and sleeping on Molokai or waiting on Oahu
 		//End Sequence
 		while(true) {
 			if(numChildOnOahu + numAdultOnOahu==0) {
@@ -159,11 +173,12 @@ public class Boat
 				ActualNumChildOnOahu++;
 				numChildOnOahu = ActualNumChildOnOahu;
 				numAdultOnOahu = ActualNumAdultOnOahu;
+				boatLocation = "Oahu";
 				numPeopleOnMolokai--;
 				pilotLock.release();
 				//pilot.sleep();
 				a.waitUntil(30);
-				
+
 				//using Alarm, wait for x
 			}
 		}
@@ -181,6 +196,6 @@ public class Boat
 		bg.AdultRideToMolokai();
 		bg.ChildRideToMolokai();
 	}
-	
+
 
 }

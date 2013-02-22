@@ -45,7 +45,6 @@ public class Condition2 {
 	 */
 	public void sleep() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		
 		//TODO check if it's the correct way to get the current thread.
 		waitQueue.waitForAccess(KThread.currentThread());
 		conditionLock.release();

@@ -249,7 +249,7 @@ public class PriorityScheduler extends Scheduler {
 			localThreads.add(pqe);
 			currentThread = thread;
 			
-			getThreadState(thread).acquire(this);
+			getThreadState(thread).acquire(this);			
 		}
 
 		public KThread nextThread() {
