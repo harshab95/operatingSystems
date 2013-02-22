@@ -19,7 +19,8 @@ public class Alarm {
 	 */
 	public Alarm() {
 		//TODO check if intiailization goes here before the Machine call
-		threadsWaitingUntil = new PriorityQueue<ThreadAlarmTime>(threadsWaitingInitialCapacity);
+		Comparator<ThreadAlarmTime> priorityComparator = new LowPriorityComparator(); // added
+		threadsWaitingUntil = new PriorityQueue<ThreadAlarmTime>(threadsWaitingInitialCapacity, priorityComparator);
 		Machine.timer().setInterruptHandler(new Runnable() {
 			public void run() { timerInterrupt(); }
 		});
