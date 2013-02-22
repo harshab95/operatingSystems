@@ -42,6 +42,11 @@ public class PriorityScheduler extends Scheduler {
 	 *					to the owning thread.
 	 * @return	a new priority thread queue.
 	 */
+	public static void selfTest() {
+		System.out.println("Tests for Priority Scheduler");
+	}
+	
+	
 	public ThreadQueue newThreadQueue(boolean transferPriority) {
 		return new PriorityQueue(transferPriority);
 	}
@@ -217,7 +222,7 @@ public class PriorityScheduler extends Scheduler {
 		 * Puts a thread on the waitQueue so it can wait for access to be the current running / active 
 		 * thread. Note that this may be for either a lock, or a ready (scheduling) Queue.
 		 * Once a thread is waiting, the currentThread must have its priority updated, in the case
-		 * that @param thread 's priority is higher than its current effective priority.
+		 * that @param thread 's priority is higher than its current effective priority. 
 		 *  
 		 * @param thread is the thread that is waiting for access.
 		 */

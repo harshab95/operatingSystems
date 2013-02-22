@@ -33,6 +33,8 @@ public class Boat
 		/*
 		 * OUR CUSTOM TESTS
 		 */
+		System.out.println("Tests for Boat");
+		
 		int numTests = 0;
 		for(int numChild=2; numChild<5; numChild++) {
 			for(int numAdult=0; numAdult<8; numAdult++) {

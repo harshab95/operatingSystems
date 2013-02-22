@@ -23,7 +23,7 @@ public class Condition2 {
 	 */
 	public Condition2(Lock conditionLock) {
 		this.conditionLock = conditionLock;
-		
+
 		/* 
 		 * TODO for now just assuming that we will be using our own PriorityQueue
 		 * 1) Why errors?
@@ -31,12 +31,16 @@ public class Condition2 {
 		 * 3) This correct type of Queue to use?
 		 */
 		boolean transferPriority = true;
-		
+
 		// tempScheduler only for getting access to a PriorityQueue
 		PriorityScheduler tempScheduler = new PriorityScheduler();
 		this.waitQueue = tempScheduler.new PriorityQueue(transferPriority);
 	}
 
+	public static void selfTest() {
+		System.out.println("Tests for Condition Variables");
+	}
+	
 	/**
 	 * Atomically release the associated lock and go to sleep on this condition
 	 * variable until another thread wakes it using <tt>wake()</tt>. The
@@ -60,7 +64,7 @@ public class Condition2 {
 	public void wake() {
 		boolean interrupts = Machine.interrupt().disable();
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		
+
 		//TODO implement the isEmpty() method
 		if (!waitQueue.isEmpty()) {
 			KThread t = waitQueue.nextThread();
@@ -75,13 +79,13 @@ public class Condition2 {
 	 */
 	public void wakeAll() {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
-		
+
 		while (!waitQueue.isEmpty()) {
 			wake();
 		}
 	}
 
 	private Lock conditionLock;
-	
+
 	private PriorityScheduler.PriorityQueue waitQueue;
 }

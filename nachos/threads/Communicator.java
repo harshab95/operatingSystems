@@ -1,9 +1,6 @@
 package nachos.threads;
 
-import java.util.ArrayList;
-
 import nachos.machine.*;
-
 
 /**
  * A <i>communicator</i> allows threads to synchronously exchange 32-bit
@@ -121,7 +118,8 @@ public class Communicator {
 		int numTest = 10;
 		//Needs to be declared to be final in order for inner run() { } to access comm 
 		final Communicator comm = new Communicator();
-
+		
+		System.out.println("Tests for Communicator");
 		/*
 		 * Initializing variables
 		 */

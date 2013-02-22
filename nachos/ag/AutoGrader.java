@@ -18,7 +18,9 @@ public class AutoGrader {
 	/**
 	 * Allocate a new autograder.
 	 */
+	public String testName;
 	public AutoGrader() {
+		
 	}
 
 	/**
@@ -29,15 +31,15 @@ public class AutoGrader {
 	 * @param	privilege      	encapsulates privileged access to the Nachos
 	 * 				machine.
 	 */
-	public void start(Privilege privilege) {
+	public void start(Privilege privilege, String test) {
 		Lib.assertTrue(this.privilege == null,
 				"start() called multiple times");
 		this.privilege = privilege;
+		testName = test;
 
 		String[] args = Machine.getCommandLineArguments();
-
+		
 		extractArguments(args);
-
 		System.out.print(" grader");
 
 		init();
@@ -62,7 +64,21 @@ public class AutoGrader {
 		 * 	
 		 */
 		
-		Boat.selfTest();
+		if(testName.equals("join"))
+			KThread.selfTest();
+		if(testName.equals("conditional variables"))
+			Condition2.selfTest();
+		if(testName.equals("alarm"))
+			Alarm.selfTest();
+		if(testName.equals("communicator"))
+			Communicator.selfTest();
+		if(testName.equals("priority scheduler"))
+			PriorityScheduler.selfTest();
+		if(testName.equals("boat"))
+			Boat.selfTest();
+		
+		//Communicator.selfTest();
+		//Boat.selfTest();
 		return true;
 	}
 
@@ -164,7 +180,7 @@ public class AutoGrader {
 	}
 
 	void run() {
-		kernel.selfTest();
+		//kernel.selfTest();
 		kernel.run();
 		kernel.terminate();
 	}
