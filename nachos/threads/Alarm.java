@@ -25,6 +25,10 @@ public class Alarm {
 		});
 	}
 
+	public static void selfTest() {
+		System.out.println("Tests for Alarm");
+	}
+	
 	//initialization of variables
 	//PriorityQueue<ThreadAlarmTime> threadsWaiting = null; 	old version
 
@@ -107,5 +111,4 @@ public class Alarm {
 			this.wakeTimeSet = true;
 		}
 	}
-
 }
