@@ -282,12 +282,15 @@ public class KThread {
 		Lib.debug(dbgThread, "Joining to thread: " + toString());
 		Lib.assertTrue(this != currentThread);
 		
+		//TODO disabled machine interrupts not sure if supposed to
+		boolean intStatus = Machine.interrupt().disable();		
 		if (status == statusFinished) {
 			return;
 		} else {
 			parentThread = KThread.currentThread();
 			currentThread().sleep();
 		}
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 	}
 
 	/**
@@ -409,11 +412,12 @@ public class KThread {
 	}
 
 	/**
-	 * Tests whether this module is working.
+	 * selfTest() Tests whether this module is working.
 	 */
 	public static void selfTest() {
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
 
+		System.out.println("#### Starting KThread.selfTest() ####");
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
 	}

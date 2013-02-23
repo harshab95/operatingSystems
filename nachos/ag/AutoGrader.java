@@ -50,6 +50,8 @@ public class AutoGrader {
 				(Kernel) Lib.constructObject(Config.getString("Kernel.kernel"));
 		kernel.initialize(args);
 		
+		//TODO redundant line
+		this.testName = test;
 		runTests();
 		run();
 	}
@@ -64,8 +66,9 @@ public class AutoGrader {
 		 * 	
 		 */
 		
+		KThread kt = new KThread();
 		if(testName.equals("join"))
-			KThread.selfTest();
+			kt.selfTest();
 		if(testName.equals("conditional variables"))
 			Condition2.selfTest();
 		if(testName.equals("alarm"))

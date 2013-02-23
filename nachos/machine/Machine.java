@@ -18,7 +18,7 @@ import java.util.Hashtable;
 public final class Machine {
 	
 	public final static String customParameter = "-@!";
-	public static Hashtable testBank = new Hashtable();
+	public static Hashtable<String, String> testBank = new Hashtable<String, String>();
 	public static String testName = "";
 	
 	/**
@@ -32,6 +32,9 @@ public final class Machine {
 		Lib.assertTrue(Machine.args == null);
 		Machine.args = args;
 
+		/*
+		 * To initialize our testbank (a HashMap)
+		 */
 		testBank.put("p1", "join");
 		testBank.put("p2", "conditional variables");
 		testBank.put("p3", "alarm");
@@ -74,7 +77,9 @@ public final class Machine {
 
 		autoGrader = (AutoGrader) Lib.constructObject(autoGraderClassName);
 
-		//TODO set autoGrader test?
+		//set autoGrader test here
+		autoGrader.testName = testName;
+		
 		new TCB().start(new Runnable() {
 			public void run() { autoGrader.start(privilege, testName); }
 		});
@@ -180,7 +185,7 @@ public final class Machine {
 				else if (arg.equals(customParameter)) {
 					Lib.assertTrue(i < args.length, "switch without argument");
 					//TODO perhaps implement the param extraction
-					testName = (String)testBank.get(args[i++]);
+					testName = testBank.get(args[i++]);
 				}
 			}
 		}
