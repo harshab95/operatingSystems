@@ -51,10 +51,12 @@ public class Condition2 {
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 		//TODO check if it's the correct way to get the current thread.
 		waitQueue.waitForAccess(KThread.currentThread());
-		conditionLock.release();
+		conditionLock.release();	
+		boolean intStatus = Machine.interrupt().disable();		
 		KThread.sleep();
 		//TODO check if this is correct... to acquire.
 		conditionLock.acquire();
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 	}
 
 	/**

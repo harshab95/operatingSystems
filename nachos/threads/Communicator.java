@@ -43,15 +43,22 @@ public class Communicator {
 	public void speak(int word) {
 		communicatorLock.acquire();
 		numSpeakers++;
-		if (numListeners == 0 || numSpeakers > 0) {	// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
+		if (numListeners == 0 || numSpeakers > 0) {	
+			// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
+			boolean intStatus = Machine.interrupt().disable();		
 			okToSpeak.sleep();
+			Machine.interrupt().restore(intStatus); 				//Enable interrupts
+		
 		}
 
 		// When this point is reached, our speaker has found a listener.
 		transmitMessage(word);
 		numSpeakers--;
 		okToListen.wake();
+		
+		boolean intStatus = Machine.interrupt().disable();		
 		okToSpeak.sleep();	// Need to sleep so we return AFTER message is received.
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 
 		// When this point is reached, control is returned to this thread.  Listener should have listened.
 		communicatorLock.release();

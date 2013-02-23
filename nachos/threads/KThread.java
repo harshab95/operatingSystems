@@ -394,7 +394,7 @@ public class KThread {
 		Lib.assertTrue(Machine.interrupt().disabled());
 		Lib.assertTrue(this == currentThread);
 	}
-
+	
 	private static class PingTest implements Runnable {
 		PingTest(int which) {
 			this.which = which;

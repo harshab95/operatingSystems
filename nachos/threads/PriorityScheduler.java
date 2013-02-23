@@ -140,6 +140,8 @@ public class PriorityScheduler extends Scheduler {
         	private long entryTime = 0;
         	
         	public PriorityQueueEntry(ThreadState iden, long time) {
+        		Lib.assertTrue(iden != null && !(time < 0), "PriorityQueueEntry tried " +
+        				"constructing with null threadstate of negative entry time");
         		identity = iden;
         		entryTime = time;
         	}
