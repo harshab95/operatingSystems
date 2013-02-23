@@ -5,7 +5,6 @@ import nachos.machine.*;
 import java.util.ArrayList;
 import java.util.PriorityQueue;
 import java.util.Comparator;
-import java.util.Enumeration;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -44,6 +43,17 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	public static void selfTest() {
 		System.out.println("Tests for Priority Scheduler");
+		PriorityScheduler ps = new PriorityScheduler();
+		PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
+		KThread low = new KThread();
+		KThread high = new KThread();
+		low.setName("low");
+		high.setName("high");
+		pq.add(low);
+		ps.setPriority(low, 2);
+		pq.add(high);
+		ps.setPriority(high, 7);
+		
 	}
 	
 	
@@ -273,7 +283,8 @@ public class PriorityScheduler extends Scheduler {
 				return null;
 			}
 			PriorityQueueEntry out = (PriorityQueueEntry) localThreads.poll();
-			return out.identity().thread;
+			currentThread = out.identity().thread;
+			return currentThread;
 		}
 
 		/**
