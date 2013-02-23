@@ -140,6 +140,8 @@ public class PriorityScheduler extends Scheduler {
         	private long entryTime = 0;
         	
         	public PriorityQueueEntry(ThreadState iden, long time) {
+        		Lib.assertTrue(iden != null && !(time < 0), "PriorityQueueEntry tried " +
+        				"constructing with null threadstate of negative entry time");
         		identity = iden;
         		entryTime = time;
         	}
@@ -239,7 +241,13 @@ public class PriorityScheduler extends Scheduler {
 				localThreads.add(in);
 			}
 			PriorityQueueEntry inThread = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
-			localThreads.add(inThread);
+		
+			/*
+			 * TODO bug in this line. An exception get's thrown that is caught by 
+			 * TCB.java (and then errors out) 
+			 */
+			localThreads.add(inThread); 
+			
 			// So the threadState can access it's priorities.
 			getThreadState(thread).waitForAccess(this);
 		}

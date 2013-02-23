@@ -43,15 +43,22 @@ public class Communicator {
 	public void speak(int word) {
 		communicatorLock.acquire();
 		numSpeakers++;
-		if (numListeners == 0 || numSpeakers > 0) {	// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
+		if (numListeners == 0 || numSpeakers > 0) {	
+			// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
+			boolean intStatus = Machine.interrupt().disable();		
 			okToSpeak.sleep();
+			Machine.interrupt().restore(intStatus); 				//Enable interrupts
+		
 		}
 
 		// When this point is reached, our speaker has found a listener.
 		transmitMessage(word);
 		numSpeakers--;
 		okToListen.wake();
+		
+		boolean intStatus = Machine.interrupt().disable();		
 		okToSpeak.sleep();	// Need to sleep so we return AFTER message is received.
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 
 		// When this point is reached, control is returned to this thread.  Listener should have listened.
 		communicatorLock.release();
@@ -68,13 +75,17 @@ public class Communicator {
 		communicatorLock.acquire();
 		numListeners++;
 		if (numSpeakers == 0 || numListeners > 0) {	// TODO Same question as if statement in speak().
+			boolean intStatus = Machine.interrupt().disable();		
 			okToListen.sleep();
+			Machine.interrupt().restore(intStatus); 				//Enable interrupts
 		}
 
 		// At this point, our listener has found a speaker.
 		okToSpeak.wake();	// Tell speaker to transmit.  We sleep while transmission occurs.
+		
+		boolean intStatus = Machine.interrupt().disable();		
 		okToListen.sleep();
-
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 		// At this point, the paired speaker has transmitted the message.  Listener can listen.
 		int toReturn = retrieveMessage();
 		numListeners--;
