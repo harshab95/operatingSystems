@@ -241,7 +241,13 @@ public class PriorityScheduler extends Scheduler {
 				localThreads.add(in);
 			}
 			PriorityQueueEntry inThread = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
-			localThreads.add(inThread);
+		
+			/*
+			 * TODO bug in this line. An exception get's thrown that is caught by 
+			 * TCB.java (and then errors out) 
+			 */
+			localThreads.add(inThread); 
+			
 			// So the threadState can access it's priorities.
 			getThreadState(thread).waitForAccess(this);
 		}

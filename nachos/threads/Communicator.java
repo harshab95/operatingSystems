@@ -75,13 +75,17 @@ public class Communicator {
 		communicatorLock.acquire();
 		numListeners++;
 		if (numSpeakers == 0 || numListeners > 0) {	// TODO Same question as if statement in speak().
+			boolean intStatus = Machine.interrupt().disable();		
 			okToListen.sleep();
+			Machine.interrupt().restore(intStatus); 				//Enable interrupts
 		}
 
 		// At this point, our listener has found a speaker.
 		okToSpeak.wake();	// Tell speaker to transmit.  We sleep while transmission occurs.
+		
+		boolean intStatus = Machine.interrupt().disable();		
 		okToListen.sleep();
-
+		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 		// At this point, the paired speaker has transmitted the message.  Listener can listen.
 		int toReturn = retrieveMessage();
 		numListeners--;
