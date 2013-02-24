@@ -381,7 +381,7 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	protected class ThreadState {
 		protected int effectivePriority = -1;
-		protected ArrayList<ThreadState> parents = null;
+		protected ArrayList<ThreadState> parents = new ArrayList<ThreadState>();
 		protected KThread child = null;
 		protected PriorityQueue targetQueue = null;
 		protected PriorityQueueEntry pqEntry = null;
