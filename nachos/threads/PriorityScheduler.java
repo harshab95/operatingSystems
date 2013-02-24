@@ -2,6 +2,8 @@ package nachos.threads;
 
 import nachos.machine.*;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.TreeSet;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -134,10 +136,71 @@ public class PriorityScheduler extends Scheduler {
 	 * A <tt>ThreadQueue</tt> that sorts threads by priority.
 	 */
 	protected class PriorityQueue extends ThreadQueue {
+		
+		/**
+		 * New class to be able to help keep track of what entries in localThreads
+		 * @author Jonathan
+		 *
+		 */
+		private class PriorityQueueEntry {
+			private ThreadState threadState = null;
+			private long entryTime = 0;
+
+			public PriorityQueueEntry(ThreadState tState, long entryTime) {
+				threadState = tState;
+				this.entryTime = entryTime;
+			}
+
+			public int priority() {
+				return threadState.getEffectivePriority();
+			}
+
+			public ThreadState identity() {
+				return threadState;
+			}
+			public long entryTime() {
+				return entryTime;
+			}
+		}
+
+		/** 
+		 * Implemented a PriorityComparator for our PriorityThreadQueue, a
+		 *  subclass of ThreadQueue. 
+		 * NOTE: Because a java.util.pq takes the LEAST as given by the comparator 
+		 * ordering, things seemed flipped.   
+		 */
+		private class PriorityComparator implements Comparator<PriorityQueueEntry> {
+			public int compare(PriorityQueueEntry kt1, PriorityQueueEntry kt2) {
+				int kt1p= kt1.priority();
+				int kt2p = kt2.priority();
+				if (kt1p == kt2p) {
+					if (kt1.entryTime() > kt2.entryTime()) {
+						return -1;
+					}
+					if (kt1.entryTime() < kt2.entryTime()) {
+						return 1;
+					} else {
+						//TODO break ties arbitrarily ?
+						return 0;
+					}
+				}
+				else if (kt1p < kt2p) {
+					return 1;
+				}
+				else {
+					// kt1p > kt2p
+					return -1;
+				}
+			}
+			public boolean equals(Object o) {
+				return o.equals(this);
+			}
+		}
+		
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
 		}
-		
+
 		public boolean isEmpty() {
 			//TODO implement me
 			return true;
@@ -181,6 +244,12 @@ public class PriorityScheduler extends Scheduler {
 		 * threads to the owning thread.
 		 */
 		public boolean transferPriority;
+		
+		/**
+		 * Added fields
+		 */
+		java.util.PriorityQueue<PriorityQueueEntry> localThreads = null;
+		KThread currentThread = null;
 	}
 
 	/**
@@ -270,5 +339,15 @@ public class PriorityScheduler extends Scheduler {
 		protected KThread thread;
 		/** The priority of the associated thread. */
 		protected int priority;
+		
+		/**
+		 * Added Fields
+		 */
+		//TODO undefined behavior for when we call effectivePriority before it is initialized
+		private int effectivePriority = -1;
+		protected boolean effectivePriorityInitialized = false;
+		
+		protected KThread child = null;
+		protected ArrayList<KThread> parents = null;
 	}
 }
