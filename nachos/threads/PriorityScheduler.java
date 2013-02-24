@@ -266,16 +266,21 @@ public class PriorityScheduler extends Scheduler {
 			//To refresh the priority queue, must remove and read
 			if (currentThread != null) {
 				ThreadState curThreadState = getThreadState(currentThread);
-				PriorityQueue tq = curThreadState.targetQueue;
-				long inputTime = curThreadState.pqEntry.entryTime();
-				curThreadState.targetQueue.remove(currentThread);
-				if (curThreadState.parents != null) {
-					curThreadState.parents.add(getThreadState(thread)); //Error happens here: Current ThreadState has no parents, null pointer exception.
+				if (curThreadState.targetQueue != null) {
+					PriorityQueue tq = curThreadState.targetQueue;
+					curThreadState.targetQueue.remove(currentThread);
+					if (curThreadState.parents != null) {
+						curThreadState.parents.add(getThreadState(thread)); //Error happens here: Current ThreadState has no parents, null pointer exception.
+					}
+					curThreadState.calculateEffectivePriority();
+					if (curThreadState.pqEntry != null) {
+						long inputTime = curThreadState.pqEntry.entryTime();
+						tq.add(curThreadState, inputTime);
+					} else {
+						tq.add(currentThread);
+					}
 				}
-				curThreadState.calculateEffectivePriority();
-				tq.add(curThreadState, inputTime);
 			}
-			
 			/*
 			 * TODO bug in this line. An exception get's thrown that is caught by 
 			 * TCB.java (and then errors out) 
@@ -418,15 +423,16 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void calculateEffectivePriority() {
 			int highestPriority = (int) Double.NEGATIVE_INFINITY;
+			if (this.parents != null) {
 			ArrayList<ThreadState> currentThreadParents = this.parents;
-			for (int i = 0; i < currentThreadParents.size(); i++) {
-				KThread inThread = ((ThreadState) currentThreadParents.get(i)).thread;
-				if (getThreadState(inThread).getEffectivePriority() > highestPriority) {
-					highestPriority = getThreadState(inThread).getEffectivePriority();
+				for (int i = 0; i < currentThreadParents.size(); i++) {
+					KThread inThread = ((ThreadState) currentThreadParents.get(i)).thread;
+					if (getThreadState(inThread).getEffectivePriority() > highestPriority) {
+						highestPriority = getThreadState(inThread).getEffectivePriority();
+					}
 				}
+				this.effectivePriority= highestPriority;
 			}
-			this.effectivePriority= highestPriority;
-			
 			if (child != null) {
 				( (ThreadState) child.schedulingState).calculateEffectivePriority();
 			}
