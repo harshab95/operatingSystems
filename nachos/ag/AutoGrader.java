@@ -57,7 +57,6 @@ public class AutoGrader {
 	}
 
 	private boolean runTests() {
-		System.out.println("\n\t******* Starting runTests() ***** \t\n");
 		/*
 		 * parse(testParams)
 		 * if (test = "p1T"){
@@ -65,20 +64,24 @@ public class AutoGrader {
 		 * ) {
 		 * 	
 		 */
-		
+		if (testName == null) {
+			return false;
+		}
+		System.out.println("\n\t******* Starting runTests() ***** \t\n");
 		KThread kt = new KThread();
 		if(testName.equals("join"))
 			kt.selfTest();
-		if(testName.equals("conditional variables"))
+		else if(testName.equals("conditional variables"))
 			Condition2.selfTest();
-		if(testName.equals("alarm"))
+		else if(testName.equals("alarm"))
 			Alarm.selfTest();
-		if(testName.equals("communicator"))
+		else if(testName.equals("communicator"))
 			Communicator.selfTest();
-		if(testName.equals("priority scheduler"))
+		else if(testName.equals("priority scheduler"))
 			PriorityScheduler.selfTest();
-		if(testName.equals("boat"))
+		else if(testName.equals("boat"))
 			Boat.selfTest();
+		else System.out.println("No test run! Check your parameters to nachos");
 		
 		//Communicator.selfTest();
 		//Boat.selfTest();
