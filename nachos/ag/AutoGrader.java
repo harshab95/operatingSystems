@@ -20,7 +20,7 @@ public class AutoGrader {
 	/**
 	 * Allocate a new autograder.
 	 */
-	public String testName, fullParam;
+	public String testName, testNumber;
 	public AutoGrader() {
 		
 	}
@@ -72,27 +72,9 @@ public class AutoGrader {
 		
 		
 		
-		System.out.println("\n\t******* Starting runTests() ***** \t\n");
-		
-		/* 
-		 * I made regular expressions in hopes of automating what test number we run for which test ex: p6113 
-		 * would automatically run Boat.selfTest113() without having to do 113 cases. Having a hard time finding out 
-		 * how to exectue strings in java ex: execute("Boat.selfTest" + tmp); Putting a pause on this. ~Jonathan Eng
-		 */
-		Pattern partNumberPattern = Pattern.compile("(?<=p)[0-6]");
-		Matcher partNumberMatcher = partNumberPattern.matcher(fullParam);
-		
-		Pattern testNumberPattern= Pattern.compile("(?<=(^(p|P)[1-6]))[0-9]*");
-		Matcher testNumberMatcher = testNumberPattern.matcher(fullParam);
-		
-		if (partNumberMatcher.find()) {
-			String tmp = partNumberMatcher.group();
-			System.out.print("**** Test Number : " + tmp + "\t");
-		}
-		if (testNumberMatcher.find()) {
-			String tmp = testNumberMatcher.group();
-			System.out.println("Test Number : " + tmp);
-		}
+		System.out.println("\n---------------- Starting runTests() ");
+		System.out.println("** Test Name   : " + testName);
+		System.out.println("*  Test Number : " + testNumber + "\n");
 		
 		KThread kt = new KThread();
 		if(testName.equals("join"))
@@ -105,8 +87,8 @@ public class AutoGrader {
 			Communicator.selfTest();
 		else if(testName.equals("priority scheduler"))
 			PriorityScheduler.selfTest();
-		else if(testName.substring(0,4).equals("boat")) {
-			Integer testNum = Integer.parseInt(testName.substring(4));
+		else if(testName.equals("boat")) {
+			Integer testNum = Integer.parseInt(testNumber);
 			switch(testNum) {
 			case 1: Boat.selfTest1();
 			break;
