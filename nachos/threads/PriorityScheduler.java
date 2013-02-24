@@ -43,23 +43,30 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	public static void selfTest() {
 		System.out.println("Tests for Priority Scheduler");
+		System.out.println("Basic Test Initiated...");
 		PriorityScheduler ps = new PriorityScheduler();
 		PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
 		KThread low = new KThread();
 		KThread high = new KThread();
 		low.setName("low");
 		high.setName("high");
-		System.out.println(low);
-		System.out.println(high);
 		boolean interrupt = Machine.interrupt().disable();
-		ps.setPriority(low, 2);
-		ps.setPriority(high, 7);
-		System.out.println(((ThreadState)low.schedulingState).getPriority());
-		System.out.println(((ThreadState)high.schedulingState).getPriority());
+		ps.setPriority(low, 1);
+		ps.setPriority(high, 4);
 		pq.add(low);
 		pq.add(high);
 		Machine.interrupt().restore(interrupt);
-		System.out.println("This should be high: " + pq.pickNextThread().identity().thread.getName());
+		String result = pq.pickNextThread().identity().thread.getName();
+		System.out.println("This should be high: " + result);
+		Lib.assertTrue(result == "high");
+		System.out.println("Basic test complete.");
+		System.out.println("Testing calculateEffectivePriority...");
+		KThread highest = new KThread();
+		highest.setName("highest");
+		interrupt = Machine.interrupt().disable();
+		ps.setPriority(highest, 7);
+		
+		
 	
 	}
 	
@@ -180,11 +187,9 @@ public class PriorityScheduler extends Scheduler {
     	 *  */
     	private class PriorityComparator implements Comparator<PriorityQueueEntry> {
     		public int compare(PriorityQueueEntry kt1, PriorityQueueEntry kt2) {
-    			System.out.println("comparing...");
     			int kt1p= kt1.priority();
     			int kt2p = kt2.priority();
     			if (kt1p == kt2p) {
-    				System.out.println("equal");
     				System.out.println(kt1p);
     				System.out.println(kt2p);
     				if (kt1.entryTime() > kt2.entryTime()) {
@@ -197,11 +202,9 @@ public class PriorityScheduler extends Scheduler {
     				}
     			}
     			else if (kt1p < kt2p) {
-    				System.out.println("less than");
     				return 1;
     			}
     			else {
-    				System.out.println("greater than");
     				return -1;
     			}
     		}
@@ -226,14 +229,12 @@ public class PriorityScheduler extends Scheduler {
 		}
 		
 		public void add(KThread thr) {
-			System.out.println("Adding");
 			if (thr.schedulingState == null) {
 				thr.schedulingState = new ThreadState(thr);
 			}
 			ThreadState in = (ThreadState)thr.schedulingState;
 			System.out.println(in.getPriority());
 			PriorityQueueEntry input = new PriorityQueueEntry(in, Machine.timer().getTime());
-			//System.out.println(input.priority());
 			localThreads.add(input);
 			in.targetQueue = this;
 			in.pqEntry = input;
