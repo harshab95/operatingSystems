@@ -137,82 +137,39 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	protected class PriorityQueue extends ThreadQueue {
 		
-		/**
-		 * New class to be able to help keep track of what entries in localThreads
-		 * @author Jonathan
-		 *
-		 */
-		private class PriorityQueueEntry {
-			private ThreadState threadState = null;
-			private long entryTime = 0;
-
-			public PriorityQueueEntry(ThreadState tState, long entryTime) {
-				threadState = tState;
-				this.entryTime = entryTime;
-			}
-
-			public int priority() {
-				return threadState.getEffectivePriority();
-			}
-
-			public ThreadState identity() {
-				return threadState;
-			}
-			public long entryTime() {
-				return entryTime;
-			}
-		}
-
-		/** 
-		 * Implemented a PriorityComparator for our PriorityThreadQueue, a
-		 *  subclass of ThreadQueue. 
-		 * NOTE: Because a java.util.pq takes the LEAST as given by the comparator 
-		 * ordering, things seemed flipped.   
-		 */
-		private class PriorityComparator implements Comparator<PriorityQueueEntry> {
-			public int compare(PriorityQueueEntry kt1, PriorityQueueEntry kt2) {
-				int kt1p= kt1.priority();
-				int kt2p = kt2.priority();
-				if (kt1p == kt2p) {
-					if (kt1.entryTime() > kt2.entryTime()) {
-						return -1;
-					}
-					if (kt1.entryTime() < kt2.entryTime()) {
-						return 1;
-					} else {
-						//TODO break ties arbitrarily ?
-						return 0;
-					}
-				}
-				else if (kt1p < kt2p) {
-					return 1;
-				}
-				else {
-					// kt1p > kt2p
-					return -1;
-				}
-			}
-			public boolean equals(Object o) {
-				return o.equals(this);
-			}
-		}
-		
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
+			int initialCapacity = 10;
+			this.localThreads = new java.util.PriorityQueue<PriorityQueueEntry>(initialCapacity,
+					new PriorityTimeComparator());
+			this.currentThread = null;
 		}
 
+		/**
+		 * Added method
+		 * @return is the queue is empty 
+		 */
 		public boolean isEmpty() {
-			//TODO implement me
-			return true;
+			//TODO can threads rely on this method?
+			return localThreads.isEmpty();
 		}
 
 		public void waitForAccess(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
+			//Should not be called if it can immediately obtain access
+			Lib.assertTrue(currentThread != null);
+			
+			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
+			localThreads.add(pqe);
 			getThreadState(thread).waitForAccess(this);
 		}
 
 		public void acquire(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
+			Lib.assertTrue(currentThread == null);
+			Lib.assertTrue(localThreads.isEmpty() == true);
+			
+			currentThread = thread;
 			getThreadState(thread).acquire(this);
 		}
 
@@ -268,8 +225,15 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public ThreadState(KThread thread) {
 			this.thread = thread;
-
 			setPriority(priorityDefault);
+			
+			int initialCapacity = 10;
+			// Some of these are for sanity checks, mostly unnecessary
+			this.effectivePriority = priority;
+			this.child = null;
+			this.parents = new java.util.PriorityQueue<KThread>(initialCapacity,
+					new PriorityComparator());
+			this.queueWaitingOn = null;
 		}
 
 		/**
@@ -318,7 +282,12 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#waitForAccess
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
-			// implement me
+			// Cannot wait on two items. Should have been reset back to null
+			// if this thread got access to a resource and is waiting for another
+			Lib.assertTrue(this.queueWaitingOn == null);
+			this.queueWaitingOn = waitQueue;
+			child = waitQueue.currentThread;
+			getThreadState(child).updateEffectivePriority();
 		}
 
 		/**
@@ -334,6 +303,13 @@ public class PriorityScheduler extends Scheduler {
 		public void acquire(PriorityQueue waitQueue) {
 			// implement me
 		}	
+		
+		/**
+		 * Added. To be always able to recalculate effective priorities down the chain
+		 */
+		protected void updateEffectivePriority() {
+			//TODO implement me
+		}
 
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;
@@ -343,11 +319,94 @@ public class PriorityScheduler extends Scheduler {
 		/**
 		 * Added Fields
 		 */
-		//TODO undefined behavior for when we call effectivePriority before it is initialized
 		private int effectivePriority = -1;
-		protected boolean effectivePriorityInitialized = false;
 		
 		protected KThread child = null;
-		protected ArrayList<KThread> parents = null;
+		protected java.util.PriorityQueue<KThread> parents = null;
+		protected PriorityQueue queueWaitingOn = null;
+		
+		
 	}
+	
+
+	/**
+	 * New class to be able to help keep track of what entries in localThreads
+	 * @author Jonathan
+	 *
+	 */
+	protected class PriorityQueueEntry {
+		private ThreadState threadState = null;
+		private long entryTime = 0;
+
+		public PriorityQueueEntry(ThreadState tState, long entryTime) {
+			threadState = tState;
+			this.entryTime = entryTime;
+		}
+
+		public int priority() {
+			return threadState.getEffectivePriority();
+		}
+
+		public ThreadState identity() {
+			return threadState;
+		}
+		public long entryTime() {
+			return entryTime;
+		}
+	}
+
+	/** 
+	 * Implemented a PriorityComparator for our PriorityThreadQueue, a
+	 *  subclass of ThreadQueue. 
+	 * NOTE: Because a java.util.pq takes the LEAST as given by the comparator 
+	 * ordering, things seemed flipped.   
+	 */
+	public class PriorityTimeComparator implements Comparator<PriorityQueueEntry> {
+		public int compare(PriorityQueueEntry kt1, PriorityQueueEntry kt2) {
+			int kt1p= kt1.priority();
+			int kt2p = kt2.priority();
+			if (kt1p == kt2p) {
+				if (kt1.entryTime() > kt2.entryTime()) {
+					return -1;
+				}
+				if (kt1.entryTime() < kt2.entryTime()) {
+					return 1;
+				} else {
+					//TODO break ties arbitrarily ?
+					return 0;
+				}
+			}
+			else if (kt1p < kt2p) {
+				return 1;
+			}
+			else {
+				// kt1p > kt2p
+				return -1;
+			}
+		}
+		public boolean equals(Object o) {
+			return o.equals(this);
+		}
+	}
+	
+	public class PriorityComparator implements Comparator<KThread> {
+		public int compare(KThread kt1, KThread kt2) {
+			int kt1p = getThreadState(kt1).getEffectivePriority();
+			int kt2p = getThreadState(kt2).getEffectivePriority();
+			
+			if (kt1p == kt2p) {
+				return 0;
+			}
+			else if (kt1p < kt2p) {
+				return 1;
+			}
+			else { // kt1p > kt2p
+				return -1;
+			}
+		}
+		public boolean equals(Object o) {
+			return o.equals(this);
+		}
+	}
+	
 }
