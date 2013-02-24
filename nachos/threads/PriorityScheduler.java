@@ -233,25 +233,22 @@ public class PriorityScheduler extends Scheduler {
 				thr.schedulingState = new ThreadState(thr);
 			}
 			ThreadState in = (ThreadState)thr.schedulingState;
-			System.out.println(in.getPriority());
 			PriorityQueueEntry input = new PriorityQueueEntry(in, Machine.timer().getTime());
 			localThreads.add(input);
-			in.targetQueue = this;
-			in.pqEntry = input;
+			in.setPQEntry(input);
+			in.waitForAccess(this);
 			ThreadState curThreadState = getThreadState(currentThread);
-			curThreadState.parents.add(curThreadState);
-			in.child = currentThread;
+			curThreadState.parents.add(in);
 			curThreadState.calculateEffectivePriority();
 		}
 		
 		public void add(ThreadState ts, long entryTime) {
 			PriorityQueueEntry input = new PriorityQueueEntry(ts, entryTime);
 			localThreads.add(input);
-			ts.targetQueue = this;
-			ts.pqEntry = input;
+			ts.setPQEntry(input);
 			ThreadState curThreadState = getThreadState(currentThread);
 			curThreadState.parents.add(ts);
-			ts.child = currentThread;
+			ts.waitForAccess(this);
 			curThreadState.calculateEffectivePriority();
 		}
 		
@@ -336,6 +333,7 @@ public class PriorityScheduler extends Scheduler {
 				threadArray[i].child = null;
 			}
 			curThreadState.calculateEffectivePriority();
+			System.out.println("check");
 			return currentThread;
 		}
 
@@ -409,6 +407,10 @@ public class PriorityScheduler extends Scheduler {
 		public int getPriority() {
 			return priority;
 		}
+		
+		public void setPQEntry(PriorityQueueEntry in) {
+			pqEntry = in;
+		}
 
 		/**
 		 * Return the effective priority of the associated thread.
@@ -475,8 +477,9 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
-			targetQueue = waitQueue;
-			child = waitQueue.getCurrentThread();	
+			waitQueue.add(this.thread);
+			this.child = waitQueue.currentThread;
+			this.targetQueue = waitQueue;
 		}
 
 		/**
@@ -496,8 +499,8 @@ public class PriorityScheduler extends Scheduler {
 				ThreadState childThreadState = getThreadState(getThreadState(thread).child);
 				childThreadState.parents.remove(thread);
 				getThreadState(child).calculateEffectivePriority();
-			}	
-		}	
+			}
+		}
 
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;
