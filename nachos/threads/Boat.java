@@ -24,37 +24,68 @@ public class Boat
 	public static Lock runLock = new Lock();
 	public static Condition runCondition = new Condition(runLock);
 
-	public static void selfTest()
-	{
+	public static void selfTest1() {
 		BoatGrader b = new BoatGrader();
-
-		//System.out.println("\n ***Testing Boats with only 2 children***");
-		//begin(0, 2, b); 
-
-		//	System.out.println("\n ***Testing Boats with 2 children, 1 adult***");
-		//  	begin(1, 2, b);
-
-		//  	System.out.println("\n ***Testing Boats with 3 children, 3 adults***");
-		//  	begin(3, 3, b);
-
-		/*
-		 * OUR CUSTOM TESTS
-		 */
-		System.out.println("Tests for Boat");
+		System.out.println("Test for Boat: testing with 0 Adults and 2 Children");
 		begin(0, 2, b); 
-		/*
-		int numTests =0;
-		for(int numChild=2; numChild<5; numChild++) {
-			for(int numAdult=0; numAdult<8; numAdult++) {
-				numTests++;
-				b = new BoatGrader();
-				System.out.println("\n ***Test " + numTests + "/24" + " with " + numAdult + " adults, " + numChild + " children***");
-				begin(numAdult, numChild, b);
-			}
-		}
-		*/
-		
 	}
+	
+	public static void selfTest2() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 0 Adults and 3 Children");
+		begin(0, 3, b); 
+	}
+	
+	public static void selfTest3() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 0 Adults and 6 Children");
+		begin(0, 6, b); 
+	}
+	
+	public static void selfTest4() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 0 Adults and 7 Children");
+		begin(0, 7, b); 
+	}
+	
+	public static void selfTest5() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 0 Adults and 100 Children");
+		begin(0, 100, b); 
+	}
+	
+	public static void selfTest6() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 1 Adults and 2 Children");
+		begin(1, 2, b); 
+	}
+	public static void selfTest7() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 2 Adults and 2 Children");
+		begin(2, 2, b); 
+	}
+	public static void selfTest8() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 3 Adults and 2 Children");
+		begin(3, 2, b); 
+	}
+	public static void selfTest9() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 1 Adult and 3 Children");
+		begin(1, 3, b); 
+	}
+	public static void selfTest10() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 10 Adults and 3 Children");
+		begin(10, 3, b); 
+	}
+	
+	public static void selfTest11() {
+		BoatGrader b = new BoatGrader();
+		System.out.println("Test for Boat: testing with 100 Adults and 100 Children");
+		begin(100, 100, b); 
+	}
+	
 
 	public static void begin( int adults, int children, BoatGrader b )
 	{
@@ -67,7 +98,6 @@ public class Boat
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
 		finishLock.acquire();
-		//runLock.acquire();
 		for(int i=0; i<adults; i++) {
 			Runnable r = new Runnable() {
 				public void run() {

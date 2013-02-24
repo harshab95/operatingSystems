@@ -20,6 +20,7 @@ public final class Machine {
 	public final static String customParameter = "-@!";
 	public static Hashtable<String, String> testBank = new Hashtable<String, String>();
 	public static String testName = "";
+	public static String testSelect = "";
 	
 	/**
 	 * Nachos main entry point.
@@ -81,7 +82,7 @@ public final class Machine {
 		autoGrader.testName = testName;
 		
 		new TCB().start(new Runnable() {
-			public void run() { autoGrader.start(privilege, testName); }
+			public void run() { autoGrader.start(privilege, testName.concat(testSelect) ); }
 		});
 	}
 
@@ -185,7 +186,10 @@ public final class Machine {
 				else if (arg.equals(customParameter)) {
 					Lib.assertTrue(i < args.length, "switch without argument");
 					//TODO perhaps implement the param extraction
-					testName = testBank.get(args[i++]);
+					String argum = args[i++];
+					if(argum.length()>2)
+						testSelect = argum.substring(2);
+					testName = testBank.get(argum.substring(0,2));
 				}
 			}
 		}
