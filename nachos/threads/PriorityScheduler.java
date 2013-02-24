@@ -475,10 +475,6 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#waitForAccess
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
-<<<<<<< HEAD
-=======
-			waitQueue.add(this.thread);
->>>>>>> c2e5740433fa6bef2f3f5d1789fba318b49f3024
 			this.child = waitQueue.currentThread;
 			this.targetQueue = waitQueue;
 		}
