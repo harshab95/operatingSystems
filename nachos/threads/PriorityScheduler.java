@@ -49,11 +49,18 @@ public class PriorityScheduler extends Scheduler {
 		KThread high = new KThread();
 		low.setName("low");
 		high.setName("high");
-		pq.add(low);
+		System.out.println(low);
+		System.out.println(high);
+		boolean interrupt = Machine.interrupt().disable();
 		ps.setPriority(low, 2);
-		pq.add(high);
 		ps.setPriority(high, 7);
-		
+		System.out.println(((ThreadState)low.schedulingState).getPriority());
+		System.out.println(((ThreadState)high.schedulingState).getPriority());
+		pq.add(low);
+		pq.add(high);
+		Machine.interrupt().restore(interrupt);
+		System.out.println("This should be high: " + pq.pickNextThread().identity().thread.getName());
+	
 	}
 	
 	
@@ -138,6 +145,29 @@ public class PriorityScheduler extends Scheduler {
 		return (ThreadState) thread.schedulingState;
 	}
 
+	private class PriorityQueueEntry {
+    	private ThreadState identity = null;
+    	private long entryTime = 0;
+    	
+    	public PriorityQueueEntry(ThreadState iden, long time) {
+    		//Lib.assertTrue(iden != null && !(time < 0), "PriorityQueueEntry tried " +
+    			//	"constructing with null threadstate of negative entry time");
+    		identity = iden;
+    		entryTime = time;
+    	}
+    	
+    	public int priority() {
+    		return identity.getEffectivePriority();
+    	}
+    	
+    	public ThreadState identity() {
+    		return identity;
+    	}
+    	public long entryTime() {
+    		return entryTime;
+    	}
+    }
+	
 	/**
 	 * A <tt>ThreadQueue</tt> that sorts threads by priority.
 	 */
@@ -145,49 +175,18 @@ public class PriorityScheduler extends Scheduler {
 		private KThread currentThread = null;
 		private java.util.PriorityQueue<PriorityQueueEntry> localThreads = null;
 
-        private class PriorityQueueEntry {
-        	private ThreadState identity = null;
-        	private long entryTime = 0;
-        	
-        	public PriorityQueueEntry(ThreadState iden, long time) {
-        		Lib.assertTrue(iden != null && !(time < 0), "PriorityQueueEntry tried " +
-        				"constructing with null threadstate of negative entry time");
-        		identity = iden;
-        		entryTime = time;
-        	}
-        	
-        	public int priority() {
-        		return identity.getEffectivePriority();
-        	}
-        	
-        	public ThreadState identity() {
-        		return identity;
-        	}
-        	public long entryTime() {
-        		return entryTime;
-        	}	
-        }
     	/* Implemented a PriorityComparator for our PriorityThreadQueue, a
     	 *  subclass of ThreadQueue. 
     	 *  */
-    	private class PriorityComparator implements Comparator<KThread> {
-    		public int compare(KThread kt1, KThread kt2) {
-    			int kt1p= ((ThreadState)kt1.schedulingState).getEffectivePriority();
-    			int kt2p = ((ThreadState)kt2.schedulingState).getEffectivePriority();
-    			if (kt1p == kt2p) {
-    				return 0;
-    			} 
-    			else if (kt1p < kt2p) {
-    				return -1;
-    			}
-    			else {
-    				return 1;
-    			}
-    		}
+    	private class PriorityComparator implements Comparator<PriorityQueueEntry> {
     		public int compare(PriorityQueueEntry kt1, PriorityQueueEntry kt2) {
+    			System.out.println("comparing...");
     			int kt1p= kt1.priority();
     			int kt2p = kt2.priority();
     			if (kt1p == kt2p) {
+    				System.out.println("equal");
+    				System.out.println(kt1p);
+    				System.out.println(kt2p);
     				if (kt1.entryTime() > kt2.entryTime()) {
     					return 1;
     				}
@@ -198,10 +197,12 @@ public class PriorityScheduler extends Scheduler {
     				}
     			}
     			else if (kt1p < kt2p) {
-    				return -1;
+    				System.out.println("less than");
+    				return 1;
     			}
     			else {
-    				return 1;
+    				System.out.println("greater than");
+    				return -1;
     			}
     		}
     		public boolean equals(Object o) {
@@ -225,9 +226,30 @@ public class PriorityScheduler extends Scheduler {
 		}
 		
 		public void add(KThread thr) {
-			ThreadState in = ((ThreadState)thr.schedulingState);
+			System.out.println("Adding");
+			if (thr.schedulingState == null) {
+				thr.schedulingState = new ThreadState(thr);
+			}
+			ThreadState in = (ThreadState)thr.schedulingState;
+			System.out.println(in.getPriority());
 			PriorityQueueEntry input = new PriorityQueueEntry(in, Machine.timer().getTime());
+			//System.out.println(input.priority());
 			localThreads.add(input);
+			in.targetQueue = this;
+			in.pqEntry = input;
+		}
+		
+		public void add(ThreadState ts, long entryTime) {
+			PriorityQueueEntry input = new PriorityQueueEntry(ts, entryTime);
+			localThreads.add(input);
+			ts.targetQueue = this;
+		}
+		
+		public void remove(KThread thread) {
+			localThreads.remove(thread);
+			ThreadState out = (ThreadState) thread.schedulingState;
+			out.targetQueue = null;
+			out.pqEntry = null;
 		}
 		
 		/**
@@ -243,20 +265,22 @@ public class PriorityScheduler extends Scheduler {
 
 			//To refresh the priority queue, must remove and read
 			if (currentThread != null) {
-				localThreads.remove(currentThread);
-				ThreadState curThreadState = getThreadState(currentThread); 
-				curThreadState.parents.add(getThreadState(thread));
+				ThreadState curThreadState = getThreadState(currentThread);
+				PriorityQueue tq = curThreadState.targetQueue;
+				long inputTime = curThreadState.pqEntry.entryTime();
+				curThreadState.targetQueue.remove(currentThread);
+				if (curThreadState.parents != null) {
+					curThreadState.parents.add(getThreadState(thread)); //Error happens here: Current ThreadState has no parents, null pointer exception.
+				}
 				curThreadState.calculateEffectivePriority();
-				PriorityQueueEntry in = new PriorityQueueEntry(getThreadState(currentThread), Machine.timer().getTime());
-				localThreads.add(in);
+				tq.add(curThreadState, inputTime);
 			}
-			PriorityQueueEntry inThread = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
-		
+			
 			/*
 			 * TODO bug in this line. An exception get's thrown that is caught by 
 			 * TCB.java (and then errors out) 
 			 */
-			localThreads.add(inThread); 
+			this.add(thread); 
 			
 			// So the threadState can access it's priorities.
 			getThreadState(thread).waitForAccess(this);
@@ -335,6 +359,7 @@ public class PriorityScheduler extends Scheduler {
 		protected ArrayList<ThreadState> parents = null;
 		protected KThread child = null;
 		protected PriorityQueue targetQueue = null;
+		protected PriorityQueueEntry pqEntry = null;
 		
 		/**
 		 * Allocate a new <tt>ThreadState</tt> object and associate it with the
@@ -344,7 +369,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public ThreadState(KThread thread) {
 			this.thread = thread;
-
+			thread.schedulingState = this;
 			setPriority(priorityDefault);
 		}
 
@@ -365,7 +390,11 @@ public class PriorityScheduler extends Scheduler {
 		public int getEffectivePriority() {
 			// implement me
 			//Should be one line as it just needs to returned the cached value
-			return effectivePriority;
+			if (effectivePriority > priority) {
+				return effectivePriority;
+			} else {
+			return priority;
+			}
 		}
 
 		/**
@@ -388,7 +417,7 @@ public class PriorityScheduler extends Scheduler {
 		 * JE  to recalculate the effective priority of a thread
 		 */
 		public void calculateEffectivePriority() {
-			int highestPriority = (int) Double.POSITIVE_INFINITY;
+			int highestPriority = (int) Double.NEGATIVE_INFINITY;
 			ArrayList<ThreadState> currentThreadParents = this.parents;
 			for (int i = 0; i < currentThreadParents.size(); i++) {
 				KThread inThread = ((ThreadState) currentThreadParents.get(i)).thread;
