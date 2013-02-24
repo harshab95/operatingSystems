@@ -308,11 +308,8 @@ public class PriorityScheduler extends Scheduler {
 			//TODO Make sure no thread currently running ?
 			assert localThreads.size() == 0;
 			assert currentThread == null;
-			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
-			localThreads.add(pqe);
 			currentThread = thread;
-			
-			getThreadState(thread).acquire(this);			
+			getThreadState(thread).acquire(this);
 		}
 
 		public KThread nextThread() {
@@ -330,10 +327,12 @@ public class PriorityScheduler extends Scheduler {
 			}
 			currentThread = out.identity().thread;
 			for (int i = 0; i < threadArray.length; i++) {
-				threadArray[i].child = null;
+				threadArray[i].child = currentThread;
 			}
+			ThreadState newThreadState = getThreadState(currentThread);
+			newThreadState.child = null;
+			newThreadState.acquire(this);
 			curThreadState.calculateEffectivePriority();
-			System.out.println("check");
 			return currentThread;
 		}
 
@@ -476,9 +475,6 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#waitForAccess
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
-			// implement me
-			// Jon's comment
-			// BT's comment
 			this.child = waitQueue.currentThread;
 			this.targetQueue = waitQueue;
 		}
@@ -498,8 +494,10 @@ public class PriorityScheduler extends Scheduler {
 			targetQueue = waitQueue;
 			if (child != null) {
 				ThreadState childThreadState = getThreadState(getThreadState(thread).child);
-				childThreadState.parents.remove(thread);
-				getThreadState(child).calculateEffectivePriority();
+				if (childThreadState.parents != null) {
+					childThreadState.parents.remove(thread);
+					getThreadState(child).calculateEffectivePriority();
+				}
 			}
 		}
 
