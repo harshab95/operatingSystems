@@ -1,0 +1,144 @@
+#############################################################
+# General Use
+#############################################################
+# Does a clean make and re-sources the setup file
+alias pmake="make clean; make; source ../bin/setup"
+
+# Does a clean make and runs tests on everything
+alias makeALL="pmake; nachos -- -- All"; alias makeAll="pmake; nachos -- -- All"; alias makeall="pmake; nachos -- -- All"; alias makeA="pmake; nachos -- -- All"; alias makea="pmake; nachos -- -- All"
+
+# Runs a comprehensive test on everything
+alias ALL="nachos -- -- All"; alias All="nachos -- -- All"; alias all="nachos -- -- All"; alias A="nachos -- -- All"; alias a="nachos -- -- All"
+
+# Enables debug flags
+export debug=" -d \#"
+
+# Cleans out proj1 folder
+alias CleanProj1="cd proj1; rm -rf nachos; cd .."
+
+# Cleans out proj2 folder
+alias CleanProj2="cd proj2; rm -rf nachos; cd .."
+
+# Cleans out proj3 folder
+alias CleanProj3="cd proj3; rm -rf nachos; cd .."
+
+# Cleans out proj4 folder
+alias CleanProj4="cd proj4; rm -rf nachos; cd .."
+
+# Cleans out all nachos folders
+alias FullClean="make clean; CleanProj1; CleanProj2; CleanProj3; CleanProj4"; alias fullClean="make clean; CleanProj1; CleanProj2; CleanProj3; CleanProj4"; alias Fullclean="make clean; CleanProj1; CleanProj2; CleanProj3; CleanProj4"; alias fullclean="make clean; CleanProj1; CleanProj2; CleanProj3; CleanProj4"
+
+# Does a pmake for Project 1
+alias make1="cd proj1; pmake; cd .."; alias 1make="cd proj1; pmake; cd .."; alias make1="cd makeproj1; pmake; cd .."; alias makeproj1="cd proj1; pmake; cd .."; alias proj1="cd proj1; pmake; cd .."
+
+# Does a pmake for Project 2
+alias make2="cd proj2; pmake; cd .."; alias 2make="cd proj2; pmake; cd .."; alias make2="cd makeproj2; pmake; cd .."; alias makeproj2="cd proj2; pmake; cd .."; alias proj2="cd proj2; pmake; cd .."
+
+# Does a pmake for Project 3
+alias make3="cd proj3; pmake; cd .."; alias 3make="cd proj3; pmake; cd .."; alias make3="cd makeproj3; pmake; cd .."; alias makeproj3="cd proj3; pmake; cd .."; alias proj3="cd proj3; pmake; cd .."
+
+# Does a pmake for Project 4
+alias make4="cd proj4; pmake; cd .."; alias 4make="cd proj4; pmake; cd .."; alias make4="cd makeproj4; pmake; cd .."; alias makeproj4="cd proj4; pmake; cd .."; alias proj4="cd proj4; pmake; cd .."
+
+# Runs the shell for nachos
+alias shell="nachos -x sh.coff"
+
+#############################################################
+# Project 4 - Empty for now - don't know how to test yet.
+#############################################################
+# Does a clean make and runs all proj4 tests
+alias makeP4="pmake; nachos -- -- p4"; alias makep4="pmake; nachos -- -- p4"
+
+# Runs all proj4 tests
+alias P4="nachos -- -- p4"; alias p4="nachos -- -- p4"
+
+
+#############################################################
+# Project 3 - Empty for now - don't know how to test yet.
+#############################################################
+# Does a clean make and runs all proj3 tests
+alias makeP3="pmake; nachos -- -- p3"; alias makep3="pmake; nachos -- -- p3"
+
+# Runs all proj3 tests
+alias P3="nachos -- -- p3"; alias p3="nachos -- -- p3"
+
+
+#############################################################
+# Project 2
+#############################################################
+# Does a clean make and runs all proj2 tests
+alias makeP2="pmake; nachos -- -- p2"; alias makep2="pmake; nachos -- -- p2"
+
+# Runs all proj2 tests
+alias P2="nachos -- -- p2"; alias p2="nachos -- -- p2"
+
+# Does a clean make and runs tests on FileSystem
+alias makeFILES="pmake; nachos -- -- f"; alias makeFiles="pmake; nachos -- -- f"; alias makefiles="pmake; nachos -- -- f"; alias makeF="pmake; nachos -- -- f"; alias makef="pmake; nachos -- -- f"
+
+# Runs test on Filesystem
+alias FILES="nachos -- -- f"; alias Files="nachos -- -- f"; alias files="nachos -- -- f"; alias F="nachos -- -- f"; alias f="nachos -- -- f"
+
+# Does a clean make and runs tests on Memory
+alias makeMEMORY="pmake; nachos -- -- m"; alias makeMemory="pmake; nachos -- -- m"; alias makememory="pmake; nachos -- -- m"; alias makeMEM="pmake; nachos -- -- m"; alias makeMem="pmake; nachos -- -- m"; alias makemem="pmake; nachos -- -- m"; alias makeM="pmake; nachos -- -- m"; alias makem="pmake; nachos -- -- m"
+
+# Runs test on Memory
+alias MEMORY="nachos -- -- m"; alias Memory="nachos -- -- m"; alias memory="nachos -- -- m"; alias MEM="nachos -- -- m"; alias Mem="nachos -- -- m"; alias mem="nachos -- -- m"; alias M="nachos -- -- m"; alias mem="nachos -- -- m"
+
+# Does a clean make and runs tests on System Calls
+alias makeSYSCALL="pmake; nachos -- -- s"; alias makeSyscall="pmake; nachos -- -- s"; alias makesyscall="pmake; nachos -- -- s"; alias makeS="pmake; nachos -- -- s"; alias makes="pmake; nachos -- -- s"
+
+# Runs test on System Calls
+alias SYSCALL="nachos -- -- s"; alias Syscall="nachos -- -- s"; alias syscall="nachos -- -- s"; alias S="nachos -- -- s"; alias s="nachos -- -- s"
+
+# Does a clean make and runs tests on LotteryScheduler
+alias makeLOTTERY="pmake; nachos -- -- l"; alias makeLottery="pmake; nachos -- -- l"; alias makelottery="pmake; nachos -- -- l"; alias makeL="pmake; nachos -- -- l"; alias makel="pmake; nachos -- -- l"
+
+# Runs test on LotteryScheduler
+alias LOTTERY="nachos -- -- l"; alias Lottery="nachos -- -- l"; alias lottery="nachos -- -- l"; alias L="nachos -- -- l"; alias l="nachos -- -- l"
+
+#############################################################
+# Project 1
+#############################################################
+# Does a clean make and runs all proj1 tests
+alias makeP1="pmake; nachos -- -- p1"; alias makep1="pmake; nachos -- -- p1"
+
+# Runs all proj1 tests
+alias P1="nachos -- -- p1"; alias p1="nachos -- -- p1"
+
+# Does a clean make and runs tests on Join
+alias makeJOIN="pmake; nachos -- -- j"; alias makeJoin="pmake; nachos -- -- j"; alias makejoin="pmake; nachos -- -- j"; alias makeJ="pmake; nachos -- -- j"; alias makej="pmake; nachos -- -- j"
+
+# Runs test on Join
+alias JOIN="nachos -- -- j"; alias Join="nachos -- -- j"; alias join="nachos -- -- j"; alias J="nachos -- -- j"; alias j="nachos -- -- j"
+
+# Does a clean make and runs tests on Condition2
+alias makeCONDITION="pmake; nachos -- -- co"; alias makeCondition="pmake; nachos -- -- co"; alias makecondition="pmake; nachos -- -- co"; alias makeCO="pmake; nachos -- -- co"; alias makeCo="pmake; nachos -- -- co"; alias makeco="pmake; nachos -- -- co"
+
+# Runs test on Condition2
+alias CONDITION="nachos -- -- co"; alias Condition="nachos -- -- co"; alias condition="nachos -- -- co"; alias CO="nachos -- -- co"; alias co="nachos -- -- co"
+
+# Does a clean make and runs tests on Alarm
+alias makeALARM="pmake; nachos -- -- t"; alias makeAlarm="pmake; nachos -- -- t"; alias makealarm="pmake; nachos -- -- t"
+alias makeTIMER="pmake; nachos -- -- t"; alias makeTimer="pmake; nachos -- -- t"; alias maketimer="pmake; nachos -- -- t"; alias makeT="pmake; nachos -- -- t"; alias maket="pmake; nachos -- -- t"
+
+# Runs test on Alarm
+alias ALARM="nachos -- -- t"; alias Alarm="nachos -- -- t"; alias alarm="nachos -- -- t"; alias TIMER="nachos -- -- t"; alias Timer="nachos -- -- t"; alias timer="nachos -- -- t"; alias T="nachos -- -- t"; alias t="nachos -- -- t"
+
+# Does a clean make and runs test on Communicator
+alias makeCOMMUNICATOR="pmake; nachos -- -- c"; alias makeCommunicator="pmake; nachos -- -- c"; alias makecommunicator="pmake; nachos -- -- c"; alias makeC="pmake; nachos -- -- c"; alias makec="pmake; nachos -- -- c"
+
+# Runs test on Communicator
+alias COMMUNICATOR="nachos -- -- c"; alias Communicator="nachos -- -- c"; alias communicator="nachos -- -- c"; alias COMM="nachos -- -- c"; alias Comm="nachos -- -- c"; alias comm="nachos -- -- c"; alias C="nachos -- -- c"; alias c="nachos -- -- c"
+
+# Does a clean make and runs test on PriorityScheduler
+alias makePRIORITY="pmake; nachos -- -- p"; alias makePriority="pmake; nachos -- -- p"; alias makepriority="pmake; nachos -- -- p"; alias makeP="pmake; nachos -- -- p"; alias makep="pmake; nachos -- -- p"
+
+# Runs test on PriorityScheduler
+alias PRIORITY="nachos -- -- p"; alias Priority="nachos -- -- p"; alias priority="nachos -- -- p"; alias P="nachos -- -- p"; alias p="nachos -- -- p"
+
+# Does a clean make and runs test on Boat
+alias makeBOAT="pmake; nachos -- -- b"; alias makeBoat="pmake; nachos -- -- b"; alias makeboat="pmake; nachos -- -- b"; alias makeB="pmake; nachos -- -- b"; alias makeb="pmake; nachos -- -- b"
+
+# Runs test on Boat
+alias BOAT="nachos -- -- b"; alias Boat="nachos -- -- b"; alias boat="nachos -- -- b"; alias B="nachos -- -- b"; alias b="nachos -- -- b"
+

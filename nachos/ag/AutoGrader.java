@@ -9,6 +9,8 @@ import nachos.threads.*;
 
 import java.util.Hashtable;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The default autograder. Loads the kernel, and then tests it using
@@ -18,7 +20,7 @@ public class AutoGrader {
 	/**
 	 * Allocate a new autograder.
 	 */
-	public String testName;
+	public String testName, fullParam;
 	public AutoGrader() {
 		
 	}
@@ -67,7 +69,31 @@ public class AutoGrader {
 		if (testName == null) {
 			return false;
 		}
+		
+		
+		
 		System.out.println("\n\t******* Starting runTests() ***** \t\n");
+		
+		/* 
+		 * I made regular expressions in hopes of automating what test number we run for which test ex: p6113 
+		 * would automatically run Boat.selfTest113() without having to do 113 cases. Having a hard time finding out 
+		 * how to exectue strings in java ex: execute("Boat.selfTest" + tmp); Putting a pause on this. ~Jonathan Eng
+		 */
+		Pattern partNumberPattern = Pattern.compile("(?<=p)[0-6]");
+		Matcher partNumberMatcher = partNumberPattern.matcher(fullParam);
+		
+		Pattern testNumberPattern= Pattern.compile("(?<=(^(p|P)[1-6]))[0-9]*");
+		Matcher testNumberMatcher = testNumberPattern.matcher(fullParam);
+		
+		if (partNumberMatcher.find()) {
+			String tmp = partNumberMatcher.group();
+			System.out.print("**** Test Number : " + tmp + "\t");
+		}
+		if (testNumberMatcher.find()) {
+			String tmp = testNumberMatcher.group();
+			System.out.println("Test Number : " + tmp);
+		}
+		
 		KThread kt = new KThread();
 		if(testName.equals("join"))
 			kt.selfTest();
@@ -106,7 +132,7 @@ public class AutoGrader {
 			}
 		}
 		else {
-			System.out.println("No test run! Check your parameters to nachos");
+			System.out.println("####ERROR#### No test run! Check your parameters to nachos");
 		}
 		
 		//Communicator.selfTest();
