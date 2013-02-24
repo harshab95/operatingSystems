@@ -146,6 +146,7 @@ public class PriorityScheduler extends Scheduler {
 	 * @return	the scheduling state of the specified thread.
 	 */
 	protected ThreadState getThreadState(KThread thread) {
+		assert thread != null;
 		if (thread.schedulingState == null)
 			thread.schedulingState = new ThreadState(thread);
 
@@ -309,7 +310,8 @@ public class PriorityScheduler extends Scheduler {
 			assert localThreads.size() == 0;
 			assert currentThread == null;
 			currentThread = thread;
-			getThreadState(thread).acquire(this);
+			
+			getThreadState(thread).acquire(this);			
 		}
 
 		public KThread nextThread() {
@@ -327,12 +329,10 @@ public class PriorityScheduler extends Scheduler {
 			}
 			currentThread = out.identity().thread;
 			for (int i = 0; i < threadArray.length; i++) {
-				threadArray[i].child = currentThread;
+				threadArray[i].child = null;
 			}
-			ThreadState newThreadState = getThreadState(currentThread);
-			newThreadState.child = null;
-			newThreadState.acquire(this);
 			curThreadState.calculateEffectivePriority();
+			System.out.println("check");
 			return currentThread;
 		}
 
@@ -381,7 +381,7 @@ public class PriorityScheduler extends Scheduler {
 	 */
 	protected class ThreadState {
 		protected int effectivePriority = -1;
-		protected ArrayList<ThreadState> parents = new ArrayList<ThreadState>();
+		protected ArrayList<ThreadState> parents = null;
 		protected KThread child = null;
 		protected PriorityQueue targetQueue = null;
 		protected PriorityQueueEntry pqEntry = null;
@@ -475,6 +475,7 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#waitForAccess
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
+			waitQueue.add(this.thread);
 			this.child = waitQueue.currentThread;
 			this.targetQueue = waitQueue;
 		}
@@ -495,10 +496,8 @@ public class PriorityScheduler extends Scheduler {
 				// When we get called from nextThread() meaning we had a child. oh baby;
 				// Test JonTest commit
 				ThreadState childThreadState = getThreadState(getThreadState(thread).child);
-				if (childThreadState.parents != null) {
-					childThreadState.parents.remove(thread);
-					getThreadState(child).calculateEffectivePriority();
-				}
+				childThreadState.parents.remove(thread);
+				getThreadState(child).calculateEffectivePriority();
 			}
 		}
 
