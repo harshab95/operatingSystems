@@ -158,6 +158,8 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			//Should not be called if it can immediately obtain access
 			Lib.assertTrue(currentThread != null);
+			Lib.assertTrue(thread != null);
+			Lib.assertTrue(getThreadState(thread) != null);
 			
 			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
 			localThreads.add(pqe);
@@ -168,6 +170,8 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			Lib.assertTrue(currentThread == null);
 			Lib.assertTrue(localThreads.isEmpty() == true);
+			Lib.assertTrue(thread != null);
+			Lib.assertTrue(getThreadState(thread) != null);
 			
 			currentThread = thread;
 			getThreadState(thread).acquire(this);
@@ -175,8 +179,19 @@ public class PriorityScheduler extends Scheduler {
 
 		public KThread nextThread() {
 			Lib.assertTrue(Machine.interrupt().disabled());
-			// implement me
-			return null;
+			
+			if (localThreads.isEmpty()) {
+				return null;
+			}
+			// Process the currentThread's parents 
+			KThread[] oldParents = getThreadState(currentThread).disownParents(this);
+			
+			// Set's up the new thread to be the currentThread
+			// In waitForAccess we have already enforced that the ThreadState != null
+			currentThread = localThreads.poll().threadState().thread;
+			Lib.assertTrue(currentThread != null);
+			getThreadState(currentThread).becomeCurrentThread(oldParents);
+			return currentThread;
 		}
 
 		/**
@@ -285,8 +300,10 @@ public class PriorityScheduler extends Scheduler {
 			// Cannot wait on two items. Should have been reset back to null
 			// if this thread got access to a resource and is waiting for another
 			Lib.assertTrue(this.queueWaitingOn == null);
+			Lib.assertTrue(waitQueue != null);
+			
 			this.queueWaitingOn = waitQueue;
-			child = waitQueue.currentThread;
+			addChild(waitQueue.currentThread); //Auto sets childThreadState.parent
 			getThreadState(child).updateEffectivePriority();
 		}
 
@@ -301,16 +318,99 @@ public class PriorityScheduler extends Scheduler {
 		 * @see	nachos.threads.ThreadQueue#nextThread
 		 */
 		public void acquire(PriorityQueue waitQueue) {
-			// implement me
+			queueWaitingOn = null;
+			if (child != null) {
+				removeChild();
+			}
 		}	
 		
 		/**
 		 * Added. To be always able to recalculate effective priorities down the chain
 		 */
-		protected void updateEffectivePriority() {
+		private void updateEffectivePriority() {
 			//TODO implement me
 		}
+		
+		/**
+		 * Add's a child and automatically updates child/parent pointers
+		 */
+		protected void addChild(KThread c) {
+			Lib.assertTrue(child == null);
+			Lib.assertTrue(c != null);
+			child = c;
+			getThreadState(child).parents.add(this.thread);
+			//UNN Perhaps an unnecessary sanity check
+			Lib.assertTrue(getThreadState(child).parents.contains(this.thread));
+			
+			getThreadState(child).updateEffectivePriority();
+		}
+		
+		protected void removeChild() {
+			Lib.assertTrue(child != null);
+			getThreadState(child).parents.remove(this.thread);
+			getThreadState(child).updateEffectivePriority();
+			child = null;
+		}
+		
+		/**
+		 * Adds a parent and automatically updates child/parent pointers
+		 * @param p the parent KThread
+		 */
+		protected void addParent(KThread p) {
+			Lib.assertTrue(p != null);
+			parents.add(p);
+			getThreadState(p).child = this.thread;
+			//As the child I must now update my effective priority 
+			updateEffectivePriority();
+		}
+		
+		/**
+		 * disownParents() removes the child's parents 
+		 * @param currentQueue is the queue the thread is on, not necessarily waiting (not in local threads)
+		 * Uses:
+		 * 1) When it is removed from being the currentThread (another thread is replacing it)
+		 * NOTE: If it ends up waiting for another resource, waitForAccess should take care of that
+		 * 
+		 */
+		protected KThread[] disownParents(PriorityQueue currentQueue) {
+			KThread[] oldParents = currentQueue.localThreads.toArray(new KThread[0]);
+			KThread p;
+			for (int i = 0; i < oldParents.length; i++) {
+				p = oldParents[i];
+				Lib.assertTrue(getThreadState(p).child == this.thread);
+				getThreadState(p).child = null;
+			}
+			parents.clear();
+			updateEffectivePriority();
+			return oldParents;
+		}
 
+		/**
+		 * Does bookkeeping to a ThreadState so that when it becomes a currentThread,
+		 * all the entries are correct.
+		 */
+		protected void becomeCurrentThread(KThread[] oldParents) {
+			//CHECK logic of the multiple asserts but should be correct.
+			Lib.assertTrue(queueWaitingOn ==  null || parents.isEmpty());
+			Lib.assertTrue(queueWaitingOn ==  null || child != null);
+			
+			// No longer waiting for a queue. 
+			queueWaitingOn = null;
+			
+			//Process parents.
+			parents.clear();
+			for (int i =0; i < oldParents.length; i++) {
+				// It can't have itself be its own parent. Self-reproduction is prohibited.
+				if (oldParents[i] != this.thread) {
+					parents.add(oldParents[i]);
+				}
+			}
+			
+			child = null;
+			//EffectivePriority may have changed because of new parents
+			updateEffectivePriority();
+		}
+		
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;
 		/** The priority of the associated thread. */
@@ -321,11 +421,9 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		private int effectivePriority = -1;
 		
+		protected PriorityQueue queueWaitingOn = null;
 		protected KThread child = null;
 		protected java.util.PriorityQueue<KThread> parents = null;
-		protected PriorityQueue queueWaitingOn = null;
-		
-		
 	}
 	
 
@@ -347,7 +445,7 @@ public class PriorityScheduler extends Scheduler {
 			return threadState.getEffectivePriority();
 		}
 
-		public ThreadState identity() {
+		public ThreadState threadState() {
 			return threadState;
 		}
 		public long entryTime() {
