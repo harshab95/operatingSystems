@@ -1,0 +1,13 @@
+# -d   enables debugging. Any characters in the string after this will enable debug flags like these:
+#
+#
+# a    userprog/UserProcess.java debug flags
+# c    machine/Coff.java and machine/CoffSection.java debug flags
+# i    machine/Interrupt.java debug flags
+# M    some flag inside of machine/Processor.java that we don't call. it's called "dbgFullDisassemble".
+# m    some flag inside of machine/Processor.java that we don't call. it's called "dbgDisassemble" though.
+# p    machine/Processor.java debug flags
+# S    security/NachosSecurityManager.java debug flags
+# t    threads/KThread.java debug flags
+# v    vm/VMKernel.java, vm/VMProcess.java, debug flags - doesn't really seem to be called, either.
+#

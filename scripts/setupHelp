@@ -1,0 +1,18 @@
+#
+# flags for setupHelp include the following:
+#
+# v (verbose) - shows descriptions for each aliased command
+# s (squeeze) - cuts empty lines between displayed commands
+# g (General Use) - displays commands that work across all projects
+# 1 (Project 1) - displays commands pertinent to project 1
+# 2 (Project 2) - displays commands pertinent to project 1
+# 3 (Project 3) - displays commands pertinent to project 1
+# 4 (Project 4) - displays commands pertinent to project 1
+#
+# to set a flag, you only need to append the character you want
+#     to the end of the string after "setupHelp".
+#
+
+cd bin
+java setupHelp vg2
+cd ..

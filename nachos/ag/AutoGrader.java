@@ -9,6 +9,8 @@ import nachos.threads.*;
 
 import java.util.Hashtable;
 import java.util.StringTokenizer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * The default autograder. Loads the kernel, and then tests it using
@@ -18,7 +20,7 @@ public class AutoGrader {
 	/**
 	 * Allocate a new autograder.
 	 */
-	public String testName;
+	public String testName, testNumber;
 	public AutoGrader() {
 		
 	}
@@ -67,7 +69,13 @@ public class AutoGrader {
 		if (testName == null) {
 			return false;
 		}
-		System.out.println("\n\t******* Starting runTests() ***** \t\n");
+		
+		
+		
+		System.out.println("\n---------------- Starting runTests() ");
+		System.out.println("** Test Name   : " + testName);
+		System.out.println("*  Test Number : " + testNumber + "\n");
+		
 		KThread kt = new KThread();
 		if(testName.equals("join"))
 			kt.selfTest();
@@ -79,8 +87,8 @@ public class AutoGrader {
 			Communicator.selfTest();
 		else if(testName.equals("priority scheduler"))
 			PriorityScheduler.selfTest();
-		else if(testName.substring(0,4).equals("boat")) {
-			Integer testNum = Integer.parseInt(testName.substring(4));
+		else if(testName.equals("boat")) {
+			Integer testNum = Integer.parseInt(testNumber);
 			switch(testNum) {
 			case 1: Boat.selfTest1();
 			break;
@@ -106,7 +114,7 @@ public class AutoGrader {
 			}
 		}
 		else {
-			System.out.println("No test run! Check your parameters to nachos");
+			System.out.println("####ERROR#### No test run! Check your parameters to nachos");
 		}
 		
 		//Communicator.selfTest();
