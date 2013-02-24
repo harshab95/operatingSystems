@@ -67,7 +67,7 @@ public class Condition2 {
 		boolean interrupts = Machine.interrupt().disable();
 		Lib.assertTrue(conditionLock.isHeldByCurrentThread());
 
-		//TODO implement the isEmpty() method
+		//TODO can i rely on the isEmpty() method
 		if (!waitQueue.isEmpty()) {
 			KThread t = waitQueue.nextThread();
 			t.ready();
