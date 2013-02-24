@@ -79,12 +79,7 @@ public class AutoGrader {
 			Communicator.selfTest();
 		else if(testName.equals("priority scheduler"))
 			PriorityScheduler.selfTest();
-<<<<<<< HEAD
-		else if(testName.equals("boat"))
-			Boat.selfTest();
-		else System.out.println("No test run! Check your parameters to nachos");
-=======
-		if(testName.substring(0,4).equals("boat")) {
+		else if(testName.substring(0,4).equals("boat")) {
 			Integer testNum = Integer.parseInt(testName.substring(4));
 			switch(testNum) {
 			case 1: Boat.selfTest1();
@@ -110,8 +105,9 @@ public class AutoGrader {
 			case 11: Boat.selfTest11();
 			}
 		}
-			
->>>>>>> ff6abc9c47346fdd81fb7554d513afe7ac38282e
+		else {
+			System.out.println("No test run! Check your parameters to nachos");
+		}
 		
 		//Communicator.selfTest();
 		//Boat.selfTest();
