@@ -238,12 +238,21 @@ public class PriorityScheduler extends Scheduler {
 			localThreads.add(input);
 			in.targetQueue = this;
 			in.pqEntry = input;
+			ThreadState curThreadState = getThreadState(currentThread);
+			curThreadState.parents.add(curThreadState);
+			in.child = currentThread;
+			curThreadState.calculateEffectivePriority();
 		}
 		
 		public void add(ThreadState ts, long entryTime) {
 			PriorityQueueEntry input = new PriorityQueueEntry(ts, entryTime);
 			localThreads.add(input);
 			ts.targetQueue = this;
+			ts.pqEntry = input;
+			ThreadState curThreadState = getThreadState(currentThread);
+			curThreadState.parents.add(ts);
+			ts.child = currentThread;
+			curThreadState.calculateEffectivePriority();
 		}
 		
 		public void remove(KThread thread) {
@@ -251,6 +260,10 @@ public class PriorityScheduler extends Scheduler {
 			ThreadState out = (ThreadState) thread.schedulingState;
 			out.targetQueue = null;
 			out.pqEntry = null;
+			out.child = null;
+			ThreadState curThreadState = getThreadState(currentThread);
+			curThreadState.parents.remove(out);
+			curThreadState.calculateEffectivePriority();
 		}
 		
 		/**
@@ -313,7 +326,16 @@ public class PriorityScheduler extends Scheduler {
 				return null;
 			}
 			PriorityQueueEntry out = (PriorityQueueEntry) localThreads.poll();
+			ThreadState[] threadArray = (ThreadState[]) localThreads.toArray();
+			ThreadState curThreadState = getThreadState(currentThread);
+			for (int i = 0; i < threadArray.length; i++) {
+				curThreadState.parents.remove(threadArray[i]);
+			}
 			currentThread = out.identity().thread;
+			for (int i = 0; i < threadArray.length; i++) {
+				threadArray[i].child = null;
+			}
+			curThreadState.calculateEffectivePriority();
 			return currentThread;
 		}
 
