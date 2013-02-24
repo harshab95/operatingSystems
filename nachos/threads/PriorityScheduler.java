@@ -493,6 +493,7 @@ public class PriorityScheduler extends Scheduler {
 			targetQueue = waitQueue;
 			if (child != null) { 
 				// When we get called from nextThread() meaning we had a child. oh baby;
+				// Test JonTest commit
 				ThreadState childThreadState = getThreadState(getThreadState(thread).child);
 				childThreadState.parents.remove(thread);
 				getThreadState(child).calculateEffectivePriority();
