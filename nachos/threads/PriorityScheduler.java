@@ -477,6 +477,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void waitForAccess(PriorityQueue waitQueue) {
 			// implement me
+			// Jon's comment
 			waitQueue.add(this.thread);
 			this.child = waitQueue.currentThread;
 			this.targetQueue = waitQueue;
