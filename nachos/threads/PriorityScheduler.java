@@ -35,7 +35,7 @@ public class PriorityScheduler extends Scheduler {
 	 * Custom self test made for this.
 	 */
 	public static void selfTest() {
-		int testNum = 9000;
+		int testNum = 900;
 		boolean interrupt = Machine.interrupt().disable();
 
 		System.out.println(" --------- Testing: " + testNum + " Threads."); 
@@ -201,11 +201,16 @@ public class PriorityScheduler extends Scheduler {
 
 		public void waitForAccess(KThread thread) {
 			Lib.assertTrue(Machine.interrupt().disabled());
-			//Should not be called if it can immediately obtain access
-			//FIXME why can currentThread be null and still get it?
-//			Lib.assertTrue(currentThread != null);
 			Lib.assertTrue(thread != null);
 			Lib.assertTrue(getThreadState(thread) != null);
+			
+			//To see if this is an edge case
+			if (currentThread == null) {
+				acquire(thread);
+			}
+			//Should not be called if it can immediately obtain access
+			//FIXME why can currentThread be null and still call waitForAccess?
+			Lib.assertTrue(currentThread != null);
 
 			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
 			waitingThreads.add(pqe);
