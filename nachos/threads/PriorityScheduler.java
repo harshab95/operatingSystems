@@ -64,7 +64,7 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println("Running tests and popping off queue");
 		KThread curThread = pq.currentThread;
 		KThread prevThread = null;
-		for (int i = 0; i < threads.length - 1; i++) { // lenght -1 because 1 is currentThread, not on waitingThreads
+		for (int i = 0; i < threads.length - 1; i++) { // length - 1 because 1 is currentThread, not on waitingThreads
 			curThread = pq.nextThread();
 			Lib.assertTrue(curThread != null);
 			int curPriority = ps.getThreadState(curThread).getEffectivePriority();
