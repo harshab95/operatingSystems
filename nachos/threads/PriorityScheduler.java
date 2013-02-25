@@ -357,7 +357,12 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
-			updateEffectivePriority(false);
+			//FIXME not complete and is a bad assumption perhaps. CHECK LOGIC.
+			if (queueWaitingOn != null) {
+				updateEffectivePriority(queueWaitingOn.transferPriority);
+			} else {
+				updateEffectivePriority(false);
+			}
 		}
 
 		/**
