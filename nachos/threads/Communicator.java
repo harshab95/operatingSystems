@@ -14,7 +14,7 @@ public class Communicator {
 	private int message;
 	private int numSpeakers, numListeners;
 	private Lock communicatorLock;
-	private Condition okToSpeak, okToListen;
+	private Condition okToSpeak, okToListen, okToFinish;
 
 	public final int NO_MESSAGE = -1;
 
@@ -28,6 +28,7 @@ public class Communicator {
 		communicatorLock = new Lock();
 		okToSpeak = new Condition(communicatorLock);
 		okToListen = new Condition(communicatorLock);
+		okToFinish = new Condition(communicatorLock);
 	}
 
 	/**
@@ -41,37 +42,25 @@ public class Communicator {
 	 * @param	word	the integer to transfer.
 	 */
 	public void speak(int word) {
-		System.out.println("\nspeak(): Entered method.");
 		communicatorLock.acquire();
 		numSpeakers++;
-		System.out.println("speak(): Acquired lock and incremented numSpeakers.\n" +
-				"\tnumSpeakers: " + numSpeakers + "   numListeners: " + numListeners);
-		if (numListeners == 0 || numSpeakers > 1) {	
-			// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
-			// boolean intStatus = Machine.interrupt().disable();		
-			System.out.println("speak(): Entered if statement, preparing to okToSpeak.sleep()");
-			okToSpeak.sleep();
-			// Machine.interrupt().restore(intStatus); 				//Enable interrupts
 		
+		if (numListeners == 0 || numSpeakers > 1) {
+			okToSpeak.sleep();
+		} else {
+			okToListen.wake();
 		}
-
+		
+		// Extra check: if transmitted message hasn't been received, don't transmit new one.
+		if (this.message != NO_MESSAGE) {
+			okToSpeak.sleep();
+		}
+		
 		// When this point is reached, our speaker has found a listener.
-		System.out.println("speak(): Preparing to transmitMessage().\n" +
-				"\tmessage: " + word + "  this.message: " + this.message);
 		transmitMessage(word);
 		numSpeakers--;
-		System.out.println("speak(): Decremented numSpeakers, preparing to signal okToListen.\n" +
-				"\tnumSpeakers: " + numSpeakers + "   numListeners: " + numListeners);
-		okToListen.wake();
-		
-		// boolean intStatus = Machine.interrupt().disable();		
-		System.out.println("speak(): Preparing to okToSpeak.sleep()");
-		okToSpeak.sleep();	// Need to sleep so we return AFTER message is received.
-		// Machine.interrupt().restore(intStatus); 				//Enable interrupts
-
-		// When this point is reached, control is returned to this thread.  Listener should have listened.
+		okToFinish.wake();
 		communicatorLock.release();
-		System.out.println("speak(): Released lock.");
 		return;
 	}
 
@@ -80,52 +69,38 @@ public class Communicator {
 	 * the <i>word</i> that thread passed to <tt>speak()</tt>.
 	 *
 	 * @return	the integer transferred.
-	 */    
+	 */   
 	public int listen() {
-		System.out.println("\nlisten(): Entered method.");
 		communicatorLock.acquire();
 		numListeners++;
-		System.out.println("listen(): Acquried communicatorLock and incremented numListeners.\n" +
-				"\tnumSpeakers: " + numSpeakers + "   numListeners: " + numListeners);
-		if (numSpeakers == 0 || numListeners > 1) {	// TODO Same question as if statement in speak().
-			// boolean intStatus = Machine.interrupt().disable();
-			System.out.println("listen(): Entered if statement and disabled interrupts.  Preparing to sleep().");
-			okToListen.sleep();
-			// Machine.interrupt().restore(intStatus); 				//Enable interrupts
-		}
-
-		// At this point, our listener has found a speaker.
-		System.out.println("listen(): Preparing to signal okToSpeak.");
-		okToSpeak.wake();	// Tell speaker to transmit.  We sleep while transmission occurs.
 		
-		// boolean intStatus = Machine.interrupt().disable();		
-		System.out.println("listen(): Preparing to okToListen.sleep()");
-		okToListen.sleep();
-		// Machine.interrupt().restore(intStatus); 				//Enable interrupts
-		// At this point, the paired speaker has transmitted the message.  Listener can listen.
-		System.out.println("listen(): Preparing to retrieveMessage().\n" +
-				"\tthis.message: " + this.message);
-		int toReturn = retrieveMessage();
-		System.out.println("listen(): Retrieved message; decrementing numListeners and okToSpeak.wake().");
-		numListeners--;
+		if (numSpeakers == 0 || numListeners > 1) {
+			okToListen.sleep();
+		}
+		
 		okToSpeak.wake();
+		okToFinish.sleep();
+		
+		// Reach this point ONLY when okToFinish.wake() was called - which occurs 
+		// only in speak().  Thus, we KNOW that a message is available now.
+		int toReturn = retrieveMessage();
+		numListeners--;
+		
 		communicatorLock.release();
-		System.out.println("listen(): okToSpeak.wake() and lock released.\n" +
-				"\tnumSpeakers: " + numSpeakers + "   numListeners: " + numListeners);
 		return toReturn;
 	}
-
+	
 	/**
 	 * <tt>transmitMessage()</tt> encapsulates the logic for a speaker to transmit a 
 	 * message out.
 	 * @param message is the message being passed
 	 */
 	private void transmitMessage(int message) {
-		System.out.println("transmitMessage(): Entered method with message: " + message);	
+		// System.out.println("transmitMessage(): Entered method with message: " + message);	
 		Lib.assertTrue(this.message == NO_MESSAGE);
-		System.out.println("transmitMessage(): Passed assertion test.");
+		// System.out.println("transmitMessage(): Passed assertion test.");
 		this.message = message;
-		System.out.println("transmitMessage(): Wrote message " + message + " to message field.  New value: " + this.message);
+		// System.out.println("transmitMessage(): Wrote message " + message + " to message field.  New value: " + this.message);
 	}
 
 	/**
@@ -135,12 +110,13 @@ public class Communicator {
 	 * @return the message transmitted by the speaker.
 	 */
 	private int retrieveMessage() {
-		System.out.println("retrieveMessage(): Entered method.");
+		//System.out.println("retrieveMessage(): Entered method.");
 		Lib.assertTrue(this.message != NO_MESSAGE);	// TODO Will NOT work if the message is actually -1.
-		System.out.println("retrieveMessage(): Passed assertion test.");
+		//System.out.println("retrieveMessage(): Passed assertion test.");
 		int toReturn = this.message;
 		this.message = NO_MESSAGE;
-		System.out.println("retrieveMessage(): Retrieved message and reset message field.\n\ttoReturn: " + toReturn + "   this.message: " + this.message);
+		okToSpeak.wake();	// Wake up a speaker who had to sleep because message hadn't been read yet.
+		//System.out.println("retrieveMessage(): Retrieved message and reset message field.\n\ttoReturn: " + toReturn + "   this.message: " + this.message);
 		return toReturn;
 	}
 
