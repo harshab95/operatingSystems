@@ -35,7 +35,7 @@ public class PriorityScheduler extends Scheduler {
 	 * Custom self test made for this.
 	 */
 	public static void selfTest() {
-		int testNum = 50;
+		int testNum = 9;
 		boolean interrupt = Machine.interrupt().disable();
 
 		System.out.println(" --------- Testing: " + testNum + " Threads."); 
@@ -51,7 +51,7 @@ public class PriorityScheduler extends Scheduler {
 					System.out.println(name + " is running!");
 				}
 			});
-			ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i, priorityMinimum)) );
+			ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
 
 			if (i == 0) {
 				pq.acquire(threads[i]);
@@ -64,12 +64,16 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println("Running tests and popping off queue");
 		KThread curThread = pq.currentThread;
 		KThread prevThread = null;
+		int curPriority, prevPriority;
 		for (int i = 0; i < threads.length - 1; i++) { // length - 1 because 1 is currentThread, not on waitingThreads
 			curThread = pq.nextThread();
 			Lib.assertTrue(curThread != null);
-			int curPriority = ps.getThreadState(curThread).getEffectivePriority();
+			curPriority = ps.getThreadState(curThread).getEffectivePriority();
 			if (prevThread != null && i > 1) {
-				int prevPriority = ps.getThreadState(prevThread).getEffectivePriority();
+				prevPriority = ps.getThreadState(prevThread).getEffectivePriority();
+				if ( !(prevPriority >= curPriority) ) {
+					System.out.println("Error when i = " + i);
+				}
 				Lib.assertTrue(prevPriority >=  curPriority);
 			}
 			prevThread = curThread;
@@ -337,9 +341,7 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
-			if (child != null) {
-				updateEffectivePriority();
-			}
+			updateEffectivePriority();
 		}
 
 		/**
