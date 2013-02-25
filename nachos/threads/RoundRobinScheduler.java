@@ -30,7 +30,12 @@ public class RoundRobinScheduler extends Scheduler {
 	return new FifoQueue();
     }
 
-    private class FifoQueue extends ThreadQueue {
+    public class FifoQueue extends ThreadQueue {
+    	
+    public boolean isEmpty() {
+    	return (waitQueue.size() == 0);
+    }
+    	
 	/**
 	 * Add a thread to the end of the wait queue.
 	 *

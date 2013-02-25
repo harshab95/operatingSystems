@@ -156,24 +156,20 @@ public class Communicator {
 		 * Forking to run
 		 */
 		for (i = 0; i < numTest; i++) {
+			System.out.println("Speaker forking");
 			speakers[i].fork();
-		}
-		for (i = 0; i < numTest; i++) {
+			System.out.println("Listener forking");
 			listeners[i].fork();
 		}
-
 		for (i = 0; i < numTest; i++) {
+			System.out.println("Speaker joining");
 			speakers[i].join();
-		}
-		System.out.println("speakers finished joining");
-		
-		for (i = 0; i < numTest; i++) {
+			System.out.println("Listener joining");
 			listeners[i].join();
 		}
+		System.out.println("speakers finished joining");
 		System.out.println("listeners finished joining");
 		
 		return true;
 	}
 }
-
-

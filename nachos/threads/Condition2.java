@@ -33,8 +33,8 @@ public class Condition2 {
 		boolean transferPriority = true;
 
 		// tempScheduler only for getting access to a PriorityQueue
-		PriorityScheduler tempScheduler = new PriorityScheduler();
-		this.waitQueue = tempScheduler.new PriorityQueue(transferPriority);
+		RoundRobinScheduler tempScheduler = new RoundRobinScheduler();
+		this.waitQueue = (RoundRobinScheduler.FifoQueue) tempScheduler.newThreadQueue(transferPriority);
 	}
 
 	public static void selfTest() {
@@ -89,5 +89,5 @@ public class Condition2 {
 
 	private Lock conditionLock;
 
-	private PriorityScheduler.PriorityQueue waitQueue;
+	private RoundRobinScheduler.FifoQueue waitQueue;
 }
