@@ -34,8 +34,9 @@ public class PriorityScheduler extends Scheduler {
 	/** 
 	 * Custom self test made for this.
 	 */
+	public static int numThreadsToTest = -1;
 	public static void selfTest() {
-		int testNum = 900;
+		int testNum = Math.max(numThreadsToTest, 1);
 		boolean interrupt = Machine.interrupt().disable();
 
 		System.out.println(" --------- Testing: " + testNum + " Threads."); 
@@ -62,21 +63,28 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println("Done initializing");
 
 		System.out.println("Running tests and popping off queue");
-		KThread curThread = pq.currentThread;
-		KThread prevThread = null;
-		int curPriority, prevPriority;
-		for (int i = 0; i < threads.length - 1; i++) { // length - 1 because 1 is currentThread, not on waitingThreads
-			curThread = pq.nextThread();
-			Lib.assertTrue(curThread != null);
-			curPriority = ps.getThreadState(curThread).getEffectivePriority();
-			if (prevThread != null && i > 1) {
-				prevPriority = ps.getThreadState(prevThread).getEffectivePriority();
-				if ( !(prevPriority >= curPriority) ) {
-					System.out.println("Error when i = " + i);
-				}
-				Lib.assertTrue(prevPriority >=  curPriority);
-			}
+		if (testNum <= 1) {
+			System.out.println("We have less than 2 threads. Aborting a useless test");
+			return;
+		}
+
+		KThread prevThread = pq.currentThread;
+		int prevPriority = ps.getThreadState(prevThread).getEffectivePriority();
+
+		KThread curThread = pq.nextThread();
+		int curPriority = ps.getThreadState(curThread).getEffectivePriority();
+
+		for (int i = 2; i < threads.length; i++) { 
 			prevThread = curThread;
+			prevPriority = ps.getThreadState(prevThread).getEffectivePriority();
+			
+			curThread = pq.nextThread();
+			curPriority = ps.getThreadState(curThread).getEffectivePriority();
+			if ( !(prevPriority >= curPriority) ) {
+				System.out.println("Error when i = " + i);
+			}
+			Lib.assertTrue(prevPriority >=  curPriority);
+			Lib.assertTrue(curThread != null);
 		}
 		System.out.println("---------PriorityScheduler test successful");
 	}
@@ -173,7 +181,7 @@ public class PriorityScheduler extends Scheduler {
 		if (thread.schedulingState == null)
 			thread.schedulingState = new ThreadState(thread);
 		//	TODO check if we can assume always ThreadState
-			Lib.assertTrue( ((ThreadState) thread.schedulingState).parents != null );
+		Lib.assertTrue( ((ThreadState) thread.schedulingState).parents != null );
 
 		return (ThreadState) thread.schedulingState;
 	}
@@ -203,7 +211,7 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			Lib.assertTrue(thread != null);
 			Lib.assertTrue(getThreadState(thread) != null);
-			
+
 			//To see if this is an edge case
 			if (currentThread == null) {
 				acquire(thread);
@@ -241,7 +249,7 @@ public class PriorityScheduler extends Scheduler {
 			// In waitForAccess we have already enforced that the ThreadState != null
 			currentThread = waitingThreads.poll().thread();
 			Lib.assertTrue(currentThread != null); //UNN sanity check
-			getThreadState(currentThread).becomeCurrentThread(oldParents);
+			getThreadState(currentThread).becomeCurrentThread(oldParents, this);
 			return currentThread;
 		}
 
@@ -349,7 +357,12 @@ public class PriorityScheduler extends Scheduler {
 				return;
 
 			this.priority = priority;
-			updateEffectivePriority();
+			//FIXME not complete and is a bad assumption perhaps. CHECK LOGIC.
+			if (queueWaitingOn != null) {
+				updateEffectivePriority(queueWaitingOn.transferPriority);
+			} else {
+				updateEffectivePriority(false);
+			}
 		}
 
 		/**
@@ -371,8 +384,8 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(waitQueue != null);
 
 			this.queueWaitingOn = waitQueue;
-			addChild(waitQueue.currentThread); //Auto sets childThreadState.parent
-			getThreadState(child).updateEffectivePriority();
+			addChild(waitQueue.currentThread, waitQueue); //Auto sets childThreadState.parent
+			getThreadState(child).updateEffectivePriority(waitQueue.transferPriority);
 		}
 
 		/**
@@ -388,7 +401,7 @@ public class PriorityScheduler extends Scheduler {
 		public void acquire(PriorityQueue waitQueue) {
 			queueWaitingOn = null;
 			if (child != null) {
-				removeChild();
+				removeChild(waitQueue);
 			}
 		}	
 
@@ -398,7 +411,13 @@ public class PriorityScheduler extends Scheduler {
 		 * -> child (only 1 child) tree.
 		 * NOTE: Should be able to do this even if I don't have a child
 		 */
-		private void updateEffectivePriority() {
+		private void updateEffectivePriority(boolean transferPriority) {
+			// Check if transferPriority is true or false, false is easy case
+			if (transferPriority == false) {
+				this.effectivePriority = Math.max(this.priority, this.effectivePriority);
+				return;
+			}
+
 			/*
 			 *  Fist consider parent's donated priority to get the "donated" effective priority
 			 */
@@ -407,7 +426,7 @@ public class PriorityScheduler extends Scheduler {
 			int parentPriority = priorityMinimum - 1;
 			KThread parent;
 			//Don't worry about length 0, it works. Check api
-			//FIXME why is parents null added a werid check?
+			//FIXME why is parents null added a weird check?
 			if (parents == null) {
 				parents = new java.util.PriorityQueue<KThread>();
 			}
@@ -424,7 +443,12 @@ public class PriorityScheduler extends Scheduler {
 			/*
 			 * Second, compare parent's highest "donated" priority with my own native priority
 			 */
+
+			int oldEffectivePriority = this.effectivePriority;
 			this.effectivePriority = Math.max(highestPriority, priority);
+			if (effectivePriority > oldEffectivePriority && child != null) {
+				getThreadState(child).updateEffectivePriority(transferPriority);
+			}
 
 			/*
 			 * Case: Check if I have parents but am still waiting for another resource
@@ -437,7 +461,7 @@ public class PriorityScheduler extends Scheduler {
 		/**
 		 * Add's a child and automatically updates child/parent pointers
 		 */
-		protected void addChild(KThread c) {
+		protected void addChild(KThread c, PriorityQueue waitQueue) {
 			Lib.assertTrue(child == null);
 			Lib.assertTrue(c != null);
 			this.child = c;
@@ -445,27 +469,16 @@ public class PriorityScheduler extends Scheduler {
 			//UNN Perhaps an unnecessary sanity check
 			Lib.assertTrue(getThreadState(child).parents.contains(this.thread));
 
-			getThreadState(child).updateEffectivePriority();
+			getThreadState(child).updateEffectivePriority(waitQueue.transferPriority);
 		}
 
-		protected void removeChild() {
+		protected void removeChild(PriorityQueue waitQueue) {
 			Lib.assertTrue(child != null);
 			getThreadState(child).parents.remove(this.thread);
-			getThreadState(child).updateEffectivePriority();
+			getThreadState(child).updateEffectivePriority(waitQueue.transferPriority);
 			child = null;
 		}
 
-		/**
-		 * Adds a parent and automatically updates child/parent pointers
-		 * @param p the parent KThread
-		 */
-		protected void addParent(KThread p) {
-			Lib.assertTrue(p != null);
-			parents.add(p);
-			getThreadState(p).child = this.thread;
-			//As the child I must now update my effective priority 
-			updateEffectivePriority();
-		}
 
 		/**
 		 * disownParents() removes the child's parents 
@@ -490,7 +503,7 @@ public class PriorityScheduler extends Scheduler {
 			}
 			parents.clear();
 			Lib.assertTrue(parents != null);
-			updateEffectivePriority();
+			updateEffectivePriority(currentQueue.transferPriority);
 			return oldParents;
 		}
 
@@ -498,7 +511,7 @@ public class PriorityScheduler extends Scheduler {
 		 * Does bookkeeping to a ThreadState so that when it becomes a currentThread,
 		 * all the entries are correct.
 		 */
-		protected void becomeCurrentThread(KThread[] oldParents) {
+		protected void becomeCurrentThread(KThread[] oldParents, PriorityQueue waitQueue) {
 			//CHECK logic of the multiple asserts but should be correct.
 
 			// No longer waiting for a resource. 
@@ -512,12 +525,12 @@ public class PriorityScheduler extends Scheduler {
 				// It can't have itself be its own parent. Self-reproduction is prohibited.
 				// Also do not want multiple of the same parents in the queue.
 				if (!parents.contains(oldParents[i]) && oldParents[i] != this.thread) {
-					getThreadState(oldParents[i]).addChild(this.thread);
+					getThreadState(oldParents[i]).addChild(this.thread, waitQueue);
 				}
 			}
 			//EffectivePriority may have changed because of new parents
 			//CHECK: Although it shouldn't (ask yourself why)!!
-			updateEffectivePriority();
+			updateEffectivePriority(waitQueue.transferPriority);
 		}
 
 		/** The thread with which this object is associated. */	   
