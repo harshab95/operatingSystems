@@ -44,18 +44,17 @@ public class Communicator {
 	public void speak(int word) {
 		communicatorLock.acquire();
 		numSpeakers++;
-		
+
 		if (numListeners == 0 || numSpeakers > 1) {
 			okToSpeak.sleep();
-		} else {
-			okToListen.wake();
 		}
-		
+		okToListen.wake();
+
 		// Extra check: if transmitted message hasn't been received, don't transmit new one.
-		if (this.message != NO_MESSAGE) {
+		while (this.message != NO_MESSAGE) {
 			okToSpeak.sleep();
 		}
-		
+
 		// When this point is reached, our speaker has found a listener.
 		transmitMessage(word);
 		numSpeakers--;
@@ -73,34 +72,31 @@ public class Communicator {
 	public int listen() {
 		communicatorLock.acquire();
 		numListeners++;
-		
+
 		if (numSpeakers == 0 || numListeners > 1) {
 			okToListen.sleep();
 		}
 		
 		okToSpeak.wake();
 		okToFinish.sleep();
-		
+
 		// Reach this point ONLY when okToFinish.wake() was called - which occurs 
 		// only in speak().  Thus, we KNOW that a message is available now.
 		int toReturn = retrieveMessage();
 		numListeners--;
-		
+
 		communicatorLock.release();
 		return toReturn;
 	}
-	
+
 	/**
 	 * <tt>transmitMessage()</tt> encapsulates the logic for a speaker to transmit a 
 	 * message out.
 	 * @param message is the message being passed
 	 */
 	private void transmitMessage(int message) {
-		// System.out.println("transmitMessage(): Entered method with message: " + message);	
 		Lib.assertTrue(this.message == NO_MESSAGE);
-		// System.out.println("transmitMessage(): Passed assertion test.");
 		this.message = message;
-		// System.out.println("transmitMessage(): Wrote message " + message + " to message field.  New value: " + this.message);
 	}
 
 	/**
@@ -110,13 +106,10 @@ public class Communicator {
 	 * @return the message transmitted by the speaker.
 	 */
 	private int retrieveMessage() {
-		//System.out.println("retrieveMessage(): Entered method.");
 		Lib.assertTrue(this.message != NO_MESSAGE);	// TODO Will NOT work if the message is actually -1.
-		//System.out.println("retrieveMessage(): Passed assertion test.");
 		int toReturn = this.message;
 		this.message = NO_MESSAGE;
 		okToSpeak.wake();	// Wake up a speaker who had to sleep because message hadn't been read yet.
-		//System.out.println("retrieveMessage(): Retrieved message and reset message field.\n\ttoReturn: " + toReturn + "   this.message: " + this.message);
 		return toReturn;
 	}
 
@@ -132,7 +125,7 @@ public class Communicator {
 		int numTest = 10;
 		//Needs to be declared to be final in order for inner run() { } to access comm 
 		final Communicator comm = new Communicator();
-		
+
 		System.out.println("Tests for Communicator");
 		/*
 		 * Initializing variables
@@ -154,7 +147,7 @@ public class Communicator {
 			});
 		}
 		System.out.println("finished initializing");
-		
+
 		/*
 		 * Forking to run
 		 */
@@ -168,20 +161,20 @@ public class Communicator {
 			System.out.println("Listener "+i+" forked");
 		}
 		System.out.println("Listeners finished forking");
-		
+
 
 		for (i = 0; i < numTest; i++) {
 			speakers[i].join();
 			System.out.println("Speaker "+i+" joined");
 		}
 		System.out.println("speakers finished joining");
-		
+
 		for (i = 0; i < numTest; i++) {
 			listeners[i].join();
 			System.out.println("Listener "+i+" joined");
 		}
 		System.out.println("listeners finished joining");
-		
+
 		return true;
 	}
 }
