@@ -14,7 +14,7 @@ public class Communicator {
 	private int message;
 	private int numSpeakers, numListeners;
 	private Lock communicatorLock;
-	private Condition2 okToSpeak, okToListen;
+	private Condition okToSpeak, okToListen, okToFinish;
 
 	public final int NO_MESSAGE = -1;
 
@@ -26,8 +26,9 @@ public class Communicator {
 		numSpeakers = 0;
 		numListeners = 0;
 		communicatorLock = new Lock();
-		okToSpeak = new Condition2(communicatorLock);
-		okToListen = new Condition2(communicatorLock);
+		okToSpeak = new Condition(communicatorLock);
+		okToListen = new Condition(communicatorLock);
+		okToFinish = new Condition(communicatorLock);
 	}
 
 	/**
@@ -43,24 +44,21 @@ public class Communicator {
 	public void speak(int word) {
 		communicatorLock.acquire();
 		numSpeakers++;
-		if (numListeners == 0 || numSpeakers > 0) {	
-			// TODO Is if here sufficient?  If we use while, thread will just go back to sleep.
-			boolean intStatus = Machine.interrupt().disable();		
+
+		if (numListeners == 0 || numSpeakers > 1) {
 			okToSpeak.sleep();
-			Machine.interrupt().restore(intStatus); 				//Enable interrupts
-		
+		}
+		okToListen.wake();
+
+		// Extra check: if transmitted message hasn't been received, don't transmit new one.
+		while (this.message != NO_MESSAGE) {
+			okToSpeak.sleep();
 		}
 
 		// When this point is reached, our speaker has found a listener.
 		transmitMessage(word);
 		numSpeakers--;
-		okToListen.wake();
-		
-		boolean intStatus = Machine.interrupt().disable();		
-		okToSpeak.sleep();	// Need to sleep so we return AFTER message is received.
-		Machine.interrupt().restore(intStatus); 				//Enable interrupts
-
-		// When this point is reached, control is returned to this thread.  Listener should have listened.
+		okToFinish.wake();
 		communicatorLock.release();
 		return;
 	}
@@ -70,26 +68,23 @@ public class Communicator {
 	 * the <i>word</i> that thread passed to <tt>speak()</tt>.
 	 *
 	 * @return	the integer transferred.
-	 */    
+	 */   
 	public int listen() {
 		communicatorLock.acquire();
 		numListeners++;
-		if (numSpeakers == 0 || numListeners > 0) {	// TODO Same question as if statement in speak().
-			boolean intStatus = Machine.interrupt().disable();		
-			okToListen.sleep();
-			Machine.interrupt().restore(intStatus); 				//Enable interrupts
-		}
 
-		// At this point, our listener has found a speaker.
-		okToSpeak.wake();	// Tell speaker to transmit.  We sleep while transmission occurs.
+		if (numSpeakers == 0 || numListeners > 1) {
+			okToListen.sleep();
+		}
 		
-		boolean intStatus = Machine.interrupt().disable();		
-		okToListen.sleep();
-		Machine.interrupt().restore(intStatus); 				//Enable interrupts
-		// At this point, the paired speaker has transmitted the message.  Listener can listen.
+		okToSpeak.wake();
+		okToFinish.sleep();
+
+		// Reach this point ONLY when okToFinish.wake() was called - which occurs 
+		// only in speak().  Thus, we KNOW that a message is available now.
 		int toReturn = retrieveMessage();
 		numListeners--;
-		okToSpeak.wake();
+
 		communicatorLock.release();
 		return toReturn;
 	}
@@ -112,8 +107,9 @@ public class Communicator {
 	 */
 	private int retrieveMessage() {
 		Lib.assertTrue(this.message != NO_MESSAGE);	// TODO Will NOT work if the message is actually -1.
-		int toReturn = message;
-		message = NO_MESSAGE;
+		int toReturn = this.message;
+		this.message = NO_MESSAGE;
+		okToSpeak.wake();	// Wake up a speaker who had to sleep because message hadn't been read yet.
 		return toReturn;
 	}
 
@@ -129,7 +125,7 @@ public class Communicator {
 		int numTest = 10;
 		//Needs to be declared to be final in order for inner run() { } to access comm 
 		final Communicator comm = new Communicator();
-		
+
 		System.out.println("Tests for Communicator");
 		/*
 		 * Initializing variables
@@ -151,7 +147,7 @@ public class Communicator {
 			});
 		}
 		System.out.println("finished initializing");
-		
+
 		/*
 		 * Forking to run
 		 */
@@ -165,20 +161,20 @@ public class Communicator {
 			System.out.println("Listener "+i+" forked");
 		}
 		System.out.println("Listeners finished forking");
-		
+
 
 		for (i = 0; i < numTest; i++) {
 			speakers[i].join();
 			System.out.println("Speaker "+i+" joined");
 		}
 		System.out.println("speakers finished joining");
-		
+
 		for (i = 0; i < numTest; i++) {
 			listeners[i].join();
 			System.out.println("Listener "+i+" joined");
 		}
 		System.out.println("listeners finished joining");
-		
+
 		return true;
 	}
 }
