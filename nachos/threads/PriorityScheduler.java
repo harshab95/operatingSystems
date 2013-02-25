@@ -35,7 +35,7 @@ public class PriorityScheduler extends Scheduler {
 	 * Custom self test made for this.
 	 */
 	public static void selfTest() {
-		int testNum = 9;
+		int testNum = 9000;
 		boolean interrupt = Machine.interrupt().disable();
 
 		System.out.println(" --------- Testing: " + testNum + " Threads."); 
@@ -172,6 +172,8 @@ public class PriorityScheduler extends Scheduler {
 	protected ThreadState getThreadState(KThread thread) {
 		if (thread.schedulingState == null)
 			thread.schedulingState = new ThreadState(thread);
+		//	TODO check if we can assume always ThreadState
+			Lib.assertTrue( ((ThreadState) thread.schedulingState).parents != null );
 
 		return (ThreadState) thread.schedulingState;
 	}
@@ -388,6 +390,7 @@ public class PriorityScheduler extends Scheduler {
 		 * Added. To be always able to recalculate effective priorities down the chain.
 		 * This is the mega function that ensure correctness down the parent (could be multiple) 
 		 * -> child (only 1 child) tree.
+		 * NOTE: Should be able to do this even if I don't have a child
 		 */
 		private void updateEffectivePriority() {
 			/*
@@ -398,6 +401,10 @@ public class PriorityScheduler extends Scheduler {
 			int parentPriority = priorityMinimum - 1;
 			KThread parent;
 			//Don't worry about length 0, it works. Check api
+			//FIXME why is parents null added a werid check?
+			if (parents == null) {
+				parents = new java.util.PriorityQueue<KThread>();
+			}
 			KThread[] parentThreads = parents.toArray(new KThread[0]); 
 			for (int i = 0; i < parentThreads.length; i++) {
 				parent = parentThreads[i];
@@ -476,6 +483,7 @@ public class PriorityScheduler extends Scheduler {
 				getThreadState(p).child = null;
 			}
 			parents.clear();
+			Lib.assertTrue(parents != null);
 			updateEffectivePriority();
 			return oldParents;
 		}
