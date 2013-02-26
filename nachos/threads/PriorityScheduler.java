@@ -165,7 +165,7 @@ public class PriorityScheduler extends Scheduler {
 		}
 		
 		System.out.println("\n --------- Test 4 Lock stress test");
-		final int stressCount = Math.min(numThreadsToTest * 4, TCB.maxThreads );
+		final int stressCount = Math.min(numThreadsToTest * 4, TCB.maxThreads -1);
 		System.out.println(" --------- Testing " + stressCount + " threads.");
 		System.out.println(" --------- Initializing test"); 
 		
@@ -402,6 +402,7 @@ public class PriorityScheduler extends Scheduler {
 					waitingThreads.remove(pqe);
 					waitingThreads.add(pqe);
 					//TODO add a break statement?
+					break;
 				}
 			}
 		}
@@ -559,7 +560,8 @@ public class PriorityScheduler extends Scheduler {
 			 * Second, compare parent's highest "donated" priority with my own native priority
 			 */
 
-			if (effectivePriority > oldEffectivePriority && child != null) {
+			// Must check even if we have less effective priority than before.
+			if (effectivePriority != oldEffectivePriority && child != null) {
 				getThreadState(child).updateEffectivePriority(transferPriority);
 			}
 
