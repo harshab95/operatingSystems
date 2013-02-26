@@ -49,7 +49,7 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println(" --------- Initializing test"); 
 		
 		PriorityScheduler ps = new PriorityScheduler();
-		final PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
+		PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
 		KThread[] threads = new KThread[testNum];
 		
 		
@@ -83,9 +83,14 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println("**PriorityScheduler test 1 successful\n");
 		/* Create a loop of priority-weighted threads all waiting on each other.
 		 * Calling getEffectivePriority should make the priorities of all the threads in this loop
-		 * equal to the highest priority in the loop. **/
+		 * equal to the highest priority in the loop. 
+		 * 
+		 * CURRENT BUG: Running this test with testNum > (priorityMaximum+1) makes the thread priorities
+		 * not as high as they should be. Running the test with testNum < (priorityMaximum+1) runs fine.
+		 * 
+		 * **/
 		
-		System.out.println("getEffectivePriority loop test");
+		System.out.println("Test 2: getEffectivePriority loop test");
 		PriorityQueue[] pqList = new PriorityQueue[testNum];
 		
 		for (int i = 0; i < testNum; i++) {
@@ -117,6 +122,31 @@ public class PriorityScheduler extends Scheduler {
 		} else {
 			Lib.assertTrue(ps.getEffectivePriority() == (testNum-1));
 		}
+		
+		System.out.println("Test getEffectivePriority loop Complete!");
+		
+		System.out.println(" --------- Test 3 Lock acquiring test\n");
+		System.out.println(" --------- Initializing test"); 
+		final Lock lock = new Lock();
+		for (int i = 0; i < threads.length; i++) {
+			threads[i] = new KThread( new Runnable() {
+				public void run() {
+					lock.acquire();
+					lock.release();
+				}
+			});
+			ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
+		}
+		
+		System.out.println("Forking threads");
+		for (int i = 0; i < threads.length; i++) {
+			threads[i].fork();
+		}
+		System.out.println("joining threads");
+		for (int i = 0; i < threads.length; i++) {
+			threads[i].join();
+		}
+		
 		System.out.println("---------PriorityScheduler test successful");
 		
 	}
