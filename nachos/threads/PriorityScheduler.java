@@ -1,13 +1,10 @@
 package nachos.threads;
 
-import nachos.machine.*;
-
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.TreeSet;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.concurrent.PriorityBlockingQueue;
+
+import nachos.machine.Lib;
+import nachos.machine.Machine;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -43,13 +40,13 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println(" --------- Initializing test"); 
 
 		PriorityScheduler ps = new PriorityScheduler();
-		PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
+		final PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
 		KThread[] threads = new KThread[testNum];
 		for (int i = 0; i < threads.length; i++) {
 			threads[i] = new KThread( new Runnable() {
 				String name = "Test1 Thread";
 				public void run() {
-					System.out.println(name + " is running!");
+					pq.waitForAccess(KThread.currentThread());
 				}
 			});
 			ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
@@ -88,10 +85,6 @@ public class PriorityScheduler extends Scheduler {
 		}
 		System.out.println("**PriorityScheduler test 1 successful");
 		
-		System.out.println(" --------- Testing: " + 3 + " Threads."); 
-		System.out.println(" --------- Initializing test 2 Priority Donation"); 
-		ps = new PriorityScheduler();
-		pq = (PriorityQueue) ps.newThreadQueue(true);
 		System.out.println("---------PriorityScheduler test successful");
 	}
 
@@ -246,6 +239,7 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 
 			if (waitingThreads.isEmpty()) {
+				currentThread = null;
 				return null;
 			}
 			// Process the currentThread's parents it also updates effective priority 
