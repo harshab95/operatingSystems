@@ -104,10 +104,15 @@ public class PriorityScheduler extends Scheduler {
 		
 		for (int i = 0; i < testNum; i++) {
 			pqList[i].acquire(threads[i]);
-			if (i == testNum-1) {
+			if (i == 0) {
+				ps.getThreadState(threads[i]).parents.add(threads[testNum-1]);
+				ps.getThreadState(threads[i]).child = threads[i+1];
+			} else if (i == testNum-1) {
 				ps.getThreadState(threads[i]).child = threads[0];
+				ps.getThreadState(threads[i]).parents.add(threads[i-1]);
 			} else {
 				ps.getThreadState(threads[i]).child = threads[i+1]; 
+				ps.getThreadState(threads[i]).parents.add(threads[i-1]);
 			}
 			System.out.println(ps.getEffectivePriority(ps.getThreadState(threads[i]).child)); //check to see if child assignment and priority assignment worked
 		}
