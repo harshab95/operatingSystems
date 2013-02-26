@@ -112,17 +112,24 @@ public class PriorityScheduler extends Scheduler {
 			}
 		}
 		System.out.println("Finished with pqAdding and priority assignment.");
-		for (int i = 0; i < testNum; i++) {
-			pqList[i].updateThreadPriority((ThreadState) threads[i].schedulingState);
-			System.out.println(ps.getEffectivePriority());
+		for (int k = 0; k < testNum; k ++) {
+			for (int i = 0; i < testNum; i++) {
+				pqList[i].updateThreadPriority((ThreadState) threads[i].schedulingState);
+			}
 		}
 		System.out.println("Machine didn't lag out, test partially successful.");
-		if (testNum > priorityMaximum) {
-			Lib.assertTrue(ps.getEffectivePriority() == priorityMaximum);
-		} else {
-			Lib.assertTrue(ps.getEffectivePriority() == (testNum-1));
+		for (int i = 0; i < testNum; i++) {
+			System.out.println(ps.getEffectivePriority(threads[i]));
+			if (testNum > priorityMaximum) {
+				if (ps.getEffectivePriority(threads[i]) != priorityMaximum) {
+					System.out.println("TEST FAIL.");
+				}
+			} else {
+				if (ps.getEffectivePriority(threads[i]) != (testNum-1)) {
+					System.out.println("TEST FAIL.");
+				}
+			}
 		}
-		
 		System.out.println("Test getEffectivePriority loop Complete!");
 		
 		System.out.println(" --------- Test 3 Lock acquiring test\n");
