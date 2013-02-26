@@ -86,6 +86,12 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(prevPriority >=  curPriority);
 			Lib.assertTrue(curThread != null);
 		}
+		System.out.println("**PriorityScheduler test 1 successful");
+		
+		System.out.println(" --------- Testing: " + 3 + " Threads."); 
+		System.out.println(" --------- Initializing test 2 Priority Donation"); 
+		ps = new PriorityScheduler();
+		pq = (PriorityQueue) ps.newThreadQueue(true);
 		System.out.println("---------PriorityScheduler test successful");
 	}
 
@@ -358,12 +364,11 @@ public class PriorityScheduler extends Scheduler {
 
 			this.priority = priority;
 			//FIXME not complete and is a bad assumption perhaps. CHECK LOGIC.
-//			if (queueWaitingOn != null) {
-//				updateEffectivePriority(queueWaitingOn.transferPriority);
-//			} else {
-//				updateEffectivePriority(false);
-//			}
-			updateEffectivePriority(true);
+			if (queueWaitingOn != null) {
+				updateEffectivePriority(queueWaitingOn.transferPriority);
+			} else {
+				updateEffectivePriority(true);
+			}
 		}
 
 		/**
