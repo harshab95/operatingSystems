@@ -5,6 +5,7 @@ import java.util.concurrent.PriorityBlockingQueue;
 
 import nachos.machine.Lib;
 import nachos.machine.Machine;
+import nachos.machine.TCB;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -163,6 +164,42 @@ public class PriorityScheduler extends Scheduler {
 			threads[i].join();
 		}
 		
+		System.out.println("\n --------- Test 4 Lock stress test");
+		final int stressCount = Math.min(numThreadsToTest * 4, TCB.maxThreads );
+		System.out.println(" --------- Testing " + stressCount + " threads.");
+		System.out.println(" --------- Initializing test"); 
+		
+		//Must have same locks, same # threads, 
+		final Lock[] stressLocks = new Lock[stressCount];
+		final KThread[] stressedThreads = new KThread[stressCount];
+		
+		for (int i = 0; i < stressCount; i++) {
+			stressedThreads[i] = new KThread( new Runnable() {
+				public void run() {
+					for (int j = 0; j < stressCount; j = j + 4) {
+						stressLocks[j].acquire();
+						stressLocks[j+1].acquire();
+						stressLocks[j+2].acquire();
+						stressLocks[j+3].acquire();
+						stressLocks[j+3].release();
+						stressLocks[j+2].release();
+						stressLocks[j+1].release();
+						stressLocks[j].release();
+					}
+				}
+			});
+			stressLocks[i] = new Lock();
+		}
+		
+		System.out.println("Forking threads");
+		for (int i = 0; i < stressCount; i++) {
+			stressedThreads[i].fork();
+		}
+		System.out.println("joining threads");
+		for (int i = 0; i < stressCount; i++) {
+			stressedThreads[i].join();
+		}
+			
 		System.out.println("\n ---------PriorityScheduler test successful");
 		
 	}

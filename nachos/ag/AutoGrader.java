@@ -69,6 +69,7 @@ public class AutoGrader {
 		if (testName == null) {
 			return false;
 		}
+		
 		System.out.println("\n---------------- Starting runTests() ");
 		System.out.println("** Test Name   : " + testName);
 		System.out.println("*  Test Number : " + testNumber + "\n");
