@@ -81,8 +81,44 @@ public class PriorityScheduler extends Scheduler {
 		}
 		
 		System.out.println("**PriorityScheduler test 1 successful\n");
+		/* Create a loop of priority-weighted threads all waiting on each other.
+		 * Calling getEffectivePriority should make the priorities of all the threads in this loop
+		 * equal to the highest priority in the loop. **/
 		
+		System.out.println("getEffectivePriority loop test");
+		PriorityQueue[] pqList = new PriorityQueue[testNum];
+		
+		for (int i = 0; i < testNum; i++) {
+			threads[i] = new KThread();
+			pqList[i] = (PriorityQueue) ps.newThreadQueue(true);
+			int priority = i%(priorityMaximum+1);
+			if (i < priorityMinimum) {
+				priority = priorityMinimum;
+			}
+			ps.setPriority(priority);
+		}
+		
+		for (int i = 0; i < testNum; i++) {
+			pqList[i].acquire(threads[i]);
+			if (i == testNum-1) {
+				ps.getThreadState(threads[i]).child = threads[0];
+			} else {
+				ps.getThreadState(threads[i]).child = threads[i+1]; 
+			}
+		}
+		System.out.println("Finished with pqAdding and priority assignment.");
+		for (int i = 0; i < testNum; i++) {
+			pqList[i].updateThreadPriority((ThreadState) threads[i].schedulingState);
+			System.out.println(ps.getEffectivePriority());
+		}
+		System.out.println("Machine didn't lag out, test partially successful.");
+		if (testNum > priorityMaximum) {
+			Lib.assertTrue(ps.getEffectivePriority() == priorityMaximum);
+		} else {
+			Lib.assertTrue(ps.getEffectivePriority() == (testNum-1));
+		}
 		System.out.println("---------PriorityScheduler test successful");
+		
 	}
 
 	/**
