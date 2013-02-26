@@ -28,6 +28,7 @@ public class Boat
 		BoatGrader b = new BoatGrader();
 		System.out.println("Test for Boat: testing with 0 Adults and 2 Children");
 		begin(0, 2, b); 
+		begin(3,4,b);
 	}
 	
 	public static void selfTest2() {
@@ -276,13 +277,21 @@ public class Boat
 						boatLocation = "Molokai";
 						currentIsland = "Molokai";
 						finishLock.acquire();
+						boolean intStatus = Machine.interrupt().disable();
 						finishCondition.wake();
 						finishCondition.sleep();
-						/*
-						pilot.wake();
-						pilot.sleep();
-						finishLock.release();
-						*/
+						Machine.interrupt().restore(intStatus);
+						alarm.waitUntil(30);
+						bg.ChildRowToOahu();
+						ActualNumChildOnOahu++;
+						ActualNumChildOnMolokai--;
+						numChildOnOahu = ActualNumChildOnOahu;
+						numAdultOnOahu = ActualNumAdultOnOahu;
+						numChildOnMolokai = ActualNumChildOnMolokai;
+						numAdultOnMolokai = ActualNumAdultOnMolokai;
+						boatLocation = "Oahu";
+						currentIsland = "Oahu";
+						
 					}
 				}
 			}
