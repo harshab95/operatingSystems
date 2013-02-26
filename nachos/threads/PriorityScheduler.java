@@ -85,8 +85,7 @@ public class PriorityScheduler extends Scheduler {
 		 * Calling getEffectivePriority should make the priorities of all the threads in this loop
 		 * equal to the highest priority in the loop. 
 		 * 
-		 * CURRENT BUG: Running this test with testNum > (priorityMaximum+1) makes the thread priorities
-		 * not as high as they should be. Running the test with testNum < (priorityMaximum+1) runs fine.
+		 * CURRENT BUG: Running this test seems to not change ThreadState priorities. Am I doing something wrong?
 		 * 
 		 * **/
 		
