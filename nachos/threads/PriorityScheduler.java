@@ -114,12 +114,12 @@ public class PriorityScheduler extends Scheduler {
 				ps.getThreadState(threads[i]).child = threads[i+1]; 
 				ps.getThreadState(threads[i]).parents.add(threads[i-1]);
 			}
-			System.out.println(ps.getEffectivePriority(ps.getThreadState(threads[i]).child)); //check to see if child assignment and priority assignment worked
+//			System.out.println(ps.getEffectivePriority(ps.getThreadState(threads[i]).child)); //check to see if child assignment and priority assignment worked
 		}
 		System.out.println("Finished with pqAdding and priority assignment.");
 		for (int i = 0; i < testNum; i++) {
 			pqList[i].updateThreadPriority((ThreadState) ps.getThreadState(threads[i]));
-			System.out.println(ps.getEffectivePriority(threads[i])); // check to see if priorities got changed
+//			System.out.println(ps.getEffectivePriority(threads[i])); // check to see if priorities got changed
 		}
 		System.out.println("Machine didn't lag out, test partially successful.");
 		
@@ -502,31 +502,26 @@ public class PriorityScheduler extends Scheduler {
 			/*
 			 *  Fist consider parent's donated priority to get the "donated" effective priority
 			 */
-			//CHECK do not need to make priorityMinimum - 1. Ask yourself why?
-			int highestPriority = priorityMinimum;
-			int parentPriority = priorityMinimum - 1;
+			int oldEffectivePriority = this.effectivePriority;
+			// For efficiency
+			int highestPriority = this.priority;
+			int parentPriority = highestPriority - 1;
 			KThread parent;
-			//Don't worry about length 0, it works. Check api
+			
 			//FIXME why is parents null added a weird check?
 			if (parents == null) {
 				parents = new java.util.PriorityQueue<KThread>();
 			}
-			KThread[] parentThreads = parents.toArray(new KThread[0]); 
-			for (int i = 0; i < parentThreads.length; i++) {
-				parent = parentThreads[i];
-				parentPriority = getThreadState(parent).getEffectivePriority();
-				Lib.assertTrue(parent != null);
-				if (parentPriority > highestPriority) {
-					highestPriority = parentPriority;
-				}
+			
+			// Incorporates parents' priorities.
+			if (parents.peek() != null) {
+				highestPriority = Math.max(highestPriority, getThreadState(parents.peek()).getEffectivePriority());
 			}
-
+			this.effectivePriority = highestPriority;
 			/*
 			 * Second, compare parent's highest "donated" priority with my own native priority
 			 */
 
-			int oldEffectivePriority = this.effectivePriority;
-			this.effectivePriority = Math.max(highestPriority, priority);
 			if (effectivePriority > oldEffectivePriority && child != null) {
 				getThreadState(child).updateEffectivePriority(transferPriority);
 			}
