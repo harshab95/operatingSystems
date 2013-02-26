@@ -566,21 +566,22 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected KThread[] disownParents(PriorityQueue currentQueue) {
 			//TODO clean up code in this method
-			PriorityQueueEntry[] oldParentsPQE = currentQueue.waitingThreads.toArray(new PriorityQueueEntry[0]);
+			//NOTE: This should only remove parents in currentQueue, as it may have other parents
+			PriorityQueueEntry[] oldParentsCurrentQueuePQE = currentQueue.waitingThreads.toArray(new PriorityQueueEntry[0]);
 			PriorityQueueEntry pqe;
-			KThread[] oldParents = new KThread[oldParentsPQE.length];
+			KThread[] oldParentsCurrentQueue = new KThread[oldParentsCurrentQueuePQE.length];
 			KThread p;
-			for (int i = 0; i < oldParentsPQE.length; i++) {
-				pqe = oldParentsPQE[i];
+			for (int i = 0; i < oldParentsCurrentQueuePQE.length; i++) {
+				pqe = oldParentsCurrentQueuePQE[i];
 				p = pqe.thread();
 				Lib.assertTrue(getThreadState(p).child == this.thread);
-				oldParents[i] = p;
+				oldParentsCurrentQueue[i] = p;
 				getThreadState(p).child = null;
+				parents.remove(p);
 			}
-			parents.clear();
 			Lib.assertTrue(parents != null);
 			updateEffectivePriority(currentQueue.transferPriority);
-			return oldParents;
+			return oldParentsCurrentQueue;
 		}
 
 		/**
