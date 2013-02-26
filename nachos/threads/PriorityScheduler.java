@@ -1,3 +1,4 @@
+//Version 2
 package nachos.threads;
 
 import java.util.Comparator;
@@ -142,27 +143,38 @@ public class PriorityScheduler extends Scheduler {
 		/*
 		 * TEST 3 Jonathan Eng
 		 */
-		System.out.println("\n --------- Test 3 Lock acquiring test");
+		System.out.println("\n --------- Test 3 Priority Inversion Test");
 		System.out.println(" --------- Initializing test"); 
-		final Lock lock = new Lock();
-		for (int i = 0; i < threads.length; i++) {
-			threads[i] = new KThread( new Runnable() {
-				public void run() {
-					lock.acquire();
-					lock.release();
-				}
-			});
-			ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
-		}
 		
-		System.out.println("Forking threads");
-		for (int i = 0; i < threads.length; i++) {
-			threads[i].fork();
-		}
-		System.out.println("joining threads");
-		for (int i = 0; i < threads.length; i++) {
-			threads[i].join();
-		}
+		// Thread c will have the highest priority, wait on a( lowest) whereas b is also on the ready queue
+		KThread pq1low,pq1high,pq2low,pq2high;
+		pq1low = new KThread();
+		pq1low.setName("pq1low");
+		pq1high = new KThread();
+		pq1high.setName("pq1high");
+		
+		pq2low = new KThread();
+		pq2low.setName("pq2low");
+		pq2high = new KThread();
+		pq2high.setName("pq2high");
+		
+		ps.setPriority(pq1low, 0);
+		ps.setPriority(pq1high, 3);
+		ps.setPriority(pq2low, 1);
+		ps.setPriority(pq2high, 2);
+		
+		PriorityQueue pq1 = (PriorityQueue) ps.newThreadQueue(true);	
+		PriorityQueue pq2 = (PriorityQueue) ps.newThreadQueue(true);
+		pq1.acquire(pq1low);
+		pq2.acquire(pq2low);
+		pq1.waitForAccess(pq1high);
+		pq2.waitForAccess(pq2high);
+		pq2.waitForAccess(pq1low); //pq1high should donate priority to pq1low
+		
+		Lib.assertTrue(pq2.nextThread() == pq1low);
+		Lib.assertTrue(pq2.nextThread() == pq2high);
+		Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == 0);
+		System.out.println("--------- Test 3 Priority Donation (Chain 1 queue) simple passed");
 		
 		System.out.println("\n --------- Test 4 Lock stress test");
 		final int stressCount = Math.min(numThreadsToTest * 4, TCB.maxThreads -1);
@@ -596,7 +608,7 @@ public class PriorityScheduler extends Scheduler {
 
 
 		/**
-		 * disownParents() removes the child's parents 
+		 * disownParents() removes the child's parents. SHOULD ONLY BE CALLED BY nextThread(); 
 		 * @param currentQueue is the queue the thread is on, not necessarily waiting (not in local threads)
 		 * Uses:
 		 * 1) When it is removed from being the currentThread (another thread is replacing it)
@@ -616,8 +628,8 @@ public class PriorityScheduler extends Scheduler {
 				Lib.assertTrue(getThreadState(p).child == this.thread);
 				oldParentsCurrentQueue[i] = p;
 				getThreadState(p).child = null;
-				parents.remove(p);
 			}
+			parents.clear(); //Should have no more parents;
 			Lib.assertTrue(parents != null);
 			updateEffectivePriority(currentQueue.transferPriority);
 			return oldParentsCurrentQueue;
