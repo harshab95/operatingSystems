@@ -15,7 +15,7 @@ public class Communicator {
 	private int numSpeakers, numListeners;
 	private boolean messageFieldInUse;
 	private Lock communicatorLock;
-	private Condition2 okToSpeak, okToListen, okToFinish;
+	private Condition okToSpeak, okToListen, okToFinish;	// TODO Switch back to Condition2.
 
 	/**
 	 * Allocate a new communicator.
@@ -25,9 +25,9 @@ public class Communicator {
 		numListeners = 0;
 		messageFieldInUse = false;
 		communicatorLock = new Lock();
-		okToSpeak = new Condition2(communicatorLock);
-		okToListen = new Condition2(communicatorLock);
-		okToFinish = new Condition2(communicatorLock);
+		okToSpeak = new Condition(communicatorLock);
+		okToListen = new Condition(communicatorLock);
+		okToFinish = new Condition(communicatorLock);
 	}
 
 	/**
@@ -42,13 +42,14 @@ public class Communicator {
 	 */
 	public void speak(int word) {
 		communicatorLock.acquire();
+		remainingSpeakers++;	// TODO For testing purposes only.
 		numSpeakers++;
 
 		if (numListeners == 0 || numSpeakers > 1) {
 			System.out.println("Speaker about to sleep.");	// TODO
 			okToSpeak.sleep();
 		}
-		
+
 		// At this point, a speaker-listener pair exists.  Wake up the listener and transmit the message.
 		System.out.println("Speaker woke up, signalling listener.");//TODO
 		okToListen.wake();
@@ -64,6 +65,7 @@ public class Communicator {
 		System.out.println("Speaker transmitted message"); // TODO
 		numSpeakers--;
 		okToFinish.wake();	// Ready to read the transmitted message.
+		remainingSpeakers--;	// TODO Testing purposes only.
 		communicatorLock.release();
 		return;
 	}
@@ -76,6 +78,7 @@ public class Communicator {
 	 */   
 	public int listen() {
 		communicatorLock.acquire();
+		remainingListeners++;	// TODO Testing purposes only.
 		numListeners++;
 
 		if (numSpeakers == 0 || numListeners > 1) {
@@ -83,9 +86,11 @@ public class Communicator {
 			okToListen.sleep();
 		}
 		// At this point, a listener-speaker pairing exists.  Wake up the speaker and wait for message to be written.
+		System.out.println("Listener calling okToSpeak.wake()");
 		okToSpeak.wake();
-		
+
 		while (!messageFieldInUse) {
+			System.out.println("Listener waiting to retrieve a message, but no message, okToFinish.sleep()"); 	// TODO
 			okToFinish.sleep();
 		}
 
@@ -94,7 +99,7 @@ public class Communicator {
 		System.out.println("Finish woke up and is about to retrieve message");	//TODO
 		int toReturn = retrieveMessage();
 		numListeners--;
-
+		remainingListeners--;	// TODO Testing purposes only.
 		communicatorLock.release();
 		return toReturn;
 	}
@@ -128,185 +133,99 @@ public class Communicator {
 	}
 
 	/// Testing methods and fields below this point.
-	public static final int TOTAL_TESTS = 2;
 	static int i;
+	public static int remainingSpeakers = 0, remainingListeners = 0;
 
-	private static final int statusNew = 0;
-	private static final int statusReady = 1;
-	private static final int statusRunning = 2;
-	private static final int statusBlocked = 3;
-	private static final int statusFinished = 4;
 	/**
-	 * This method is used to run a specific test.  Tests here will test:
-	 * <ol>
-	 * <li>Communicators (Part 4)</li>
-	 * <li>Condition2.java (Part 2)</li>
-	 * <li>Alarm.java (Part 3)</li>
-	 * </ol>
-	 * <p>Test Details:</p>
-	 * <ol>
-	 * <li><b>Test 0: </b>Sanity check test.  Fork 10 speakers, then 10 listeners.</li>
-	 * <li><b>Test 1: </b>Fork 2 listeners, then 1 speaker.  Check that 1 thread listener is still blocked.</li>
-	 * </ol>
-	 * 
-	 * @param testNumber the test number to run
-	 * @return true if it passes the test, false if it doesn't (or if it doesn't return at all)
+	 * selfTest() (2-parameters) tests Communicator with any number of speakers and listeners 
+	 * supplied by the user.  It prints debugging information to the terminal and notifies user 
+	 * if test was passed.
+	 * @param numTestSpeakers is the number of speakers you wish to create
+	 * @param numTestListeners is the number of listeners you wish to create
+	 * @return true if the test passes, false otherwise
 	 */
-	public static boolean selfTest(int testNumber) {
-		System.out.println("\n== Testing Communicator.java with Test " + testNumber + " ==");
-		KThread[] speakers, listeners;
-		int numTest;
+	public static boolean selfTest(int numTestSpeakers, int numTestListeners) {
+		System.out.println("\n== Testing Communicator.java with " + numTestSpeakers + 
+				" speakers and " + numTestListeners + " listeners. ==");
+
+		remainingSpeakers = 0;
+		remainingListeners = 0;
+		KThread[] speakers = new KThread[numTestSpeakers];
+		KThread[] listeners = new KThread[numTestListeners];
+		boolean testResult = false;
 		final Communicator comm = new Communicator();	// Needs to be declared final for inner run() { } to access comm.
-		String testMessageHeader = "[Communicator: Test " + testNumber + "] "; 
+		String testMessageHeader = "[Communicator: (S: " + numTestSpeakers + ", L: " + numTestListeners + ")] ";
 
-		switch (testNumber) {
-		case 0:
-			numTest = 10; 
-
-			// Initialize variables.
-			speakers = new KThread[numTest];
-			listeners = new KThread[numTest];
-			for (i = 0; i < numTest; i++) {
-				speakers[i] = new KThread(new Runnable() {
-					public void run() {
-						comm.speak(i);
-					}
-				});
-			}
-			for (i = 0; i < numTest; i++) {
-				listeners[i] = new KThread(new Runnable() {
-					public void run() {
-						comm.listen();
-					}
-				});
-			}
-			System.out.println(testMessageHeader + "Finished initializing.");
-
-			// Forking to run
-			for (i = 0; i < numTest; i++) {
-				speakers[i].fork();
-				System.out.println(testMessageHeader + "Speaker "+i+" forked.");
-			}
-			System.out.println(testMessageHeader + "Speakers finished forking.");
-			for (i = 0; i < numTest; i++) {
-				listeners[i].fork();
-				System.out.println(testMessageHeader + "Listener "+i+" forked.");
-			}
-			System.out.println(testMessageHeader + "Listeners finished forking.");
-
-
-			for (i = 0; i < numTest; i++) {
-				speakers[i].join();
-				System.out.println(testMessageHeader + "Speaker "+i+" joined.");
-			}
-			System.out.println(testMessageHeader + "Speakers finished joining.");
-
-			for (i = 0; i < numTest; i++) {
-				listeners[i].join();
-				System.out.println(testMessageHeader + "Listener "+i+" joined.");
-			}
-			System.out.println(testMessageHeader + "Listeners finished joining.");
-
-			return true;
-		case 1:
-			// Initialize variables.
-			int[] threadStatus = new int[3];
-			speakers = new KThread[1];
-			listeners = new KThread[2];
-
-			// threadA.listen()
-			listeners[0] = new KThread(new Runnable() {
-				public void run() {
-					comm.listen();
-				}
-			});
-
-			listeners[0].fork();
-			System.out.println(testMessageHeader + "listenerA forked.");
-			/*
-			threadStatus[0] = listeners[0].getThreadStatus(); 
-			if (threadStatus[0] != statusBlocked) {
-				System.out.println(testMessageHeader + "listenerA invoked listen() with no speakers available, should be blocked.\n" +
-						"\tExpected status: " + statusBlocked + "  Actual status: " + threadStatus + "\n" +
-						"\tnumSpeakers: " + comm.numSpeakers + "  numListeners: " + comm.numListeners);
-				return false;
-			}*/
-
-			// threadB.listen()
-			listeners[1] = new KThread(new Runnable() {
-				public void run() {
-					comm.listen();
-				}
-			});
-
-			listeners[1].fork();
-			System.out.println(testMessageHeader + "listenerB forked.");
-			/*
-			threadStatus[0] = listeners[0].getThreadStatus();
-			threadStatus[1] = listeners[1].getThreadStatus();
-			if (threadStatus[0] != statusBlocked || threadStatus[1] != statusBlocked) {
-				System.out.println(testMessageHeader + "listenerB invoked listen() with no speakers available, both listeners should be blocked.\n" +
-						"\tA: Expected status: " + statusBlocked + "  Actual status: " + threadStatus[0] + "\n" +
-						"\tB: Expected status: " + statusBlocked + "  Actual status: " + threadStatus[1] + "\n" +
-						"\tnumSpeakers: " + comm.numSpeakers + "  numListeners: " + comm.numListeners);
-				return false;
-			}*/
-
-			// threadC.speak()
-			speakers[0] = new KThread(new Runnable() {
-				public void run() {
-					comm.speak(i++);
-				}
-			});
-
-			speakers[0].fork();
-			System.out.println(testMessageHeader + "speaker forked.");
-
-			threadStatus[0] = listeners[0].getThreadStatus();
-			threadStatus[1] = listeners[1].getThreadStatus();
-			threadStatus[2] = speakers[0].getThreadStatus();
-			/*
-			Alarm a = new Alarm();
-			a.waitUntil(1000);
-
-			if (threadStatus[2] == statusBlocked) {
-				System.out.println(testMessageHeader + "speaker invoked speak() with two waiting listeners, should NOT be blocked.\n" +
-						"\tExpected status: NOT " + statusBlocked + "  Actual status: " + threadStatus + "\n" +
-						"\tnumSpeakers: " + comm.numSpeakers + "  numListeners: " + comm.numListeners);
-				return false;
-			}
-
-			if (threadStatus[0] != statusBlocked || threadStatus[1] != statusBlocked) {
-				System.out.println(testMessageHeader + "speaker invoked speak() with two waiting listeners, only ONE listener should be blocked.\n" +
-						"\tstatusBlocked: " + statusBlocked + "\n" + 
-						"\tlistenerA: " + threadStatus[0] + "\n" +
-						"\tlistenerB: " + threadStatus[1] + "\n" +
-						"\tnumSpeakers: " + comm.numSpeakers + "  numListeners: " + comm.numListeners);
-				return false;
-			}
-			 */
-			// Joining threads.
-			for (i = 0; i < 2; i++) {
-				// for (i = 1; i >= 0; i--) {
-				listeners[i].join();
-				System.out.println(testMessageHeader + "Listener "+i+" joined.");
-			}
-
-			speakers[0].join();
-			System.out.println(testMessageHeader + "Speaker joined.");
-			System.out.println(testMessageHeader + "Speakers finished joining.");
-
-			// listeners[1].join();
-			/*
-			System.out.println("okToSpeak is empty: " + comm.okToSpeak.hasNoWaitingThreads());
-			System.out.println("okToListen is empty: " + comm.okToListen.hasNoWaitingThreads());
-			System.out.println("okToFinish is empty: " + comm.okToFinish.hasNoWaitingThreads());*/
-			return true;
-
-		default:
-			System.out.println(testMessageHeader + "***ERROR: No such test exists.  Requested test: " + testNumber);
-			return false;
+		StringBuilder sb = new StringBuilder("");	// Used for message formatting.
+		for (int i = 0; i < testMessageHeader.length(); i++) {
+			sb.append(" ");
 		}
+		String testMessageSpace = sb.toString();
+
+		// Initialize variables.
+		speakers = new KThread[numTestSpeakers];
+		listeners = new KThread[numTestListeners];
+		for (i = 0; i < numTestSpeakers; i++) {
+			speakers[i] = new KThread(new Runnable() {
+				public void run() {
+					comm.speak(i);
+				}
+			});
+		}
+		for (i = 0; i < numTestListeners; i++) {
+			listeners[i] = new KThread(new Runnable() {
+				public void run() {
+					comm.listen();
+				}
+			});
+		}
+		System.out.println(testMessageHeader + "Finished initializing.");
+
+		// Forking to run
+		for (i = 0; i < numTestSpeakers; i++) {
+			speakers[i].fork();
+			System.out.println(testMessageHeader + "Speaker "+i+" forked.");
+		}
+		System.out.println(testMessageHeader + "Speakers finished forking.");
+		for (i = 0; i < numTestListeners; i++) {
+			listeners[i].fork();
+			System.out.println(testMessageHeader + "Listener "+i+" forked.");
+		}
+		System.out.println(testMessageHeader + "Listeners finished forking.");
+
+		// Joining.
+		// TODO Seems like if we don't join() the threads, speak()/listen() will not run.  But if you do, then we wait indefinitely when calling 2nd test (because thread sleeps, and no speaker wakes it up).
+		for (i = 0; i < numTestSpeakers; i++) {
+			speakers[i].join();
+			System.out.println(testMessageHeader + "Speaker "+i+" joined.");
+		}
+		System.out.println(testMessageHeader + "Speakers finished joining.");
+
+		for (i = 0; i < numTestListeners; i++) {
+			listeners[i].join();
+			System.out.println(testMessageHeader + "Listener "+i+" joined.");
+		}
+		System.out.println(testMessageHeader + "Listeners finished joining.");
+
+		// Print error messages as necessary, then return.
+		int numExpectedPairs = Math.min(numTestSpeakers, numTestListeners);
+		int numExpectedRemainders = Math.max(numTestSpeakers, numTestListeners) - numExpectedPairs;
+		if (numTestSpeakers < numTestListeners) {
+			System.out.println(testMessageHeader + "Expected remaining speakers: 0,  remaining listeners: " + numExpectedRemainders + "\n" +
+					testMessageSpace + "Actual   remaining speakers: " + remainingSpeakers + ",  remaining listeners: " + remainingListeners);
+			testResult = (remainingSpeakers == 0) && (remainingListeners == numExpectedRemainders);
+		} else {
+			System.out.println(testMessageHeader + "Expected remaining speakers: " + numExpectedRemainders + ",  remaining listeners: 0\n" +
+					testMessageSpace + "Actual   remaining speakers: " + remainingSpeakers + ",  remaining listeners: " + remainingListeners);
+			testResult = (remainingSpeakers == numExpectedRemainders) && (remainingListeners == 0);
+		}
+
+		if (testResult) {
+			System.out.println("\n> " + testMessageHeader + "Test passed.");
+		} else {
+			System.out.println("\n> " + testMessageHeader + "***ERROR: Test failed!");
+		}
+		return testResult;
 	}
 
 	/**
@@ -314,23 +233,14 @@ public class Communicator {
 	 * @return true if it passes all tests, false if at least one test fails OR throws an exception.
 	 */
 	public static boolean selfTest() {
-		boolean allTestsPassed = TOTAL_TESTS == 0 ? true : false;
-		System.out.println("== Testing Communicator.java.  Total Tests to run: " + TOTAL_TESTS + " ==");
-
-		for (int testNum = 0; testNum < TOTAL_TESTS; testNum++) {
-			String testResultHeader = "\n> [Communicator: Test " + testNum + "] ";
-			try {
-
-				if (selfTest(testNum)) {
-					System.out.println(testResultHeader  + "Test passed.");
-				} else {
-					System.out.println(testResultHeader + "***ERROR: Test failed.");
-					allTestsPassed = false;
-				}
-			} catch (Exception e) {
-				System.out.println(testResultHeader + "***ERROR: Exception thrown; test failed.");
-				allTestsPassed = false;
-			}
+		boolean allTestsPassed = true;
+		System.out.println("== Testing Communicator.java. ==");
+		try {
+			allTestsPassed = selfTest(10, 10) && allTestsPassed;
+			allTestsPassed = selfTest(1, 2) && allTestsPassed;
+		} catch (Exception e) {
+			System.out.println("***ERROR: Exception thrown; test failed.  selfTest() will NOT continue executing tests.");
+			allTestsPassed = false;
 		}
 		return allTestsPassed;
 	}
