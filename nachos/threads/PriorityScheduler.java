@@ -100,7 +100,7 @@ public class PriorityScheduler extends Scheduler {
 			if (i < priorityMinimum) {
 				priority = priorityMinimum;
 			}
-			ps.setPriority(priority);
+			ps.setPriority(threads[i], priority);	
 		}
 		
 		for (int i = 0; i < testNum; i++) {
@@ -110,16 +110,15 @@ public class PriorityScheduler extends Scheduler {
 			} else {
 				ps.getThreadState(threads[i]).child = threads[i+1]; 
 			}
+			System.out.println(ps.getEffectivePriority(ps.getThreadState(threads[i]).child)); //check to see if child assignment and priority assignment worked
 		}
 		System.out.println("Finished with pqAdding and priority assignment.");
-		for (int k = 0; k < testNum; k ++) {
-			for (int i = 0; i < testNum; i++) {
-				pqList[i].updateThreadPriority((ThreadState) threads[i].schedulingState);
-			}
+		for (int i = 0; i < testNum; i++) {
+			pqList[i].updateThreadPriority((ThreadState) ps.getThreadState(threads[i]));
+			System.out.println(ps.getEffectivePriority(threads[i])); // check to see if priorities got changed
 		}
 		System.out.println("Machine didn't lag out, test partially successful.");
-		for (int i = 0; i < testNum; i++) {
-			System.out.println(ps.getEffectivePriority(threads[i]));
+		for (int i = 0; i < testNum; i++) {;
 			if (testNum > priorityMaximum) {
 				if (ps.getEffectivePriority(threads[i]) != priorityMaximum) {
 					System.out.println("TEST FAIL.");
