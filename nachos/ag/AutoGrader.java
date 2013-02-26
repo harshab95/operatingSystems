@@ -69,9 +69,6 @@ public class AutoGrader {
 		if (testName == null) {
 			return false;
 		}
-		
-		
-		
 		System.out.println("\n---------------- Starting runTests() ");
 		System.out.println("** Test Name   : " + testName);
 		System.out.println("*  Test Number : " + testNumber + "\n");
@@ -86,9 +83,9 @@ public class AutoGrader {
 		else if(testName.equals("communicator"))
 			Communicator.selfTest();
 		else if(testName.equals("priority scheduler")) {
-			if (testNumber != "") 
-			PriorityScheduler.numThreadsToTest = Integer.parseInt(testNumber);
-			PriorityScheduler.selfTest();
+			if (testNumber != "")  {
+				PriorityScheduler.selfTest(Integer.parseInt(testNumber));
+			}
 		}
 		else if(testName.equals("boat")) {
 			Integer testNum = Integer.parseInt(testNumber);
@@ -223,7 +220,7 @@ public class AutoGrader {
 	}
 
 	void run() {
-		//kernel.selfTest();
+//		kernel.selfTest();
 		kernel.run();
 		kernel.terminate();
 	}
