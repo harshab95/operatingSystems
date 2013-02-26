@@ -1,0 +1,11 @@
+WORKSPACE=$HOME/git/cs162-sp13
+
+echo "Running Communicator.java test.  Printing number of times message is retrieved."
+currLoc=`pwd`
+cd $WORKSPACE/nachos/proj1
+make
+
+nachos -@! p4 > ~/output
+grep '***Retrieving message.' ~/output | wc -l
+rm ~/output
+cd $currLoc

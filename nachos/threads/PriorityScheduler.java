@@ -389,8 +389,8 @@ public class PriorityScheduler extends Scheduler {
 		 *		return.
 		 */
 		protected ThreadState pickNextThread() {
-			if (waitingThreads.peek().threadState() != null) {
-				waitingThreads.peek().threadState();
+			if (waitingThreads.peek() != null) {
+				return waitingThreads.peek().threadState();
 			}
 			return null;
 		}
