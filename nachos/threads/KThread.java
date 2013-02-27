@@ -421,6 +421,15 @@ public class KThread {
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
 	}
+	
+	/**
+	 * getThreadStatus() returns the status of the thread.  <b>THIS METHOD SHOULD 
+	 * BE USED ONLY FOR TESTING PURPOSES.  DO NOT CALL THIS METHOD OTHERWISE.</b>  
+	 * @return status of the current thread
+	 */
+	protected int getThreadStatus() {
+		return status;
+	}
 
 	private static final char dbgThread = 't';
 

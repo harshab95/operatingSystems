@@ -40,7 +40,7 @@ public class Condition2 {
 	public static void selfTest() {
 		System.out.println("Tests for Condition Variables");
 	}
-	
+
 	/**
 	 * Atomically release the associated lock and go to sleep on this condition
 	 * variable until another thread wakes it using <tt>wake()</tt>. The
@@ -90,4 +90,14 @@ public class Condition2 {
 	private Lock conditionLock;
 
 	private PriorityScheduler.PriorityQueue waitQueue;
+
+	// Testing only.
+	/**
+	 * hasNoThreadsWaiting() is called to see if there are any threads waiting.  <b>Should be used 
+	 * for testing purposes only!!!</b>
+	 * @return true if there are no threads waiting, false otherwise.
+	 */
+	protected boolean hasNoWaitingThreads() {
+		return waitQueue.isEmpty();
+	}
 }
