@@ -89,61 +89,6 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println("**PriorityScheduler test 1 successful\n");
 
 
-		/* Create a loop of priority-weighted threads all waiting on each other.
-		 * Calling getEffectivePriority should make the priorities of all the threads in this loop
-		 * equal to the highest priority in the loop. 
-		 * 
-		 * CURRENT BUG: Running this test seems to not change ThreadState priorities. Am I doing something wrong?
-		 * Brian Tan
-		 * **/
-
-		System.out.println("Test 2: getEffectivePriority loop test");
-		PriorityQueue[] pqList = new PriorityQueue[testNum];
-
-		for (int i = 0; i < testNum; i++) {
-			threads[i] = new KThread();
-			pqList[i] = (PriorityQueue) ps.newThreadQueue(true);
-			int priority = Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)); 
-			ps.setPriority(threads[i], priority);	
-		}
-
-		// This code is broken because you are breaking my abstraction barriers. UpdateEffectivePriority never gets called
-		// if you are manually adding parents and child.... ~JE
-		for (int i = 0; i < testNum; i++) {
-			pqList[i].acquire(threads[i]);
-			if (i == 0) {
-				ps.getThreadState(threads[i]).parents.add(threads[testNum-1]);
-				ps.getThreadState(threads[i]).child = threads[i+1];
-			} else if (i == testNum-1) {
-				ps.getThreadState(threads[i]).child = threads[0];
-				ps.getThreadState(threads[i]).parents.add(threads[i-1]);
-			} else {
-				ps.getThreadState(threads[i]).child = threads[i+1]; 
-				ps.getThreadState(threads[i]).parents.add(threads[i-1]);
-			}
-			//			System.out.println(ps.getEffectivePriority(ps.getThreadState(threads[i]).child)); //check to see if child assignment and priority assignment worked
-		}
-		System.out.println("Finished with pqAdding and priority assignment.");
-		for (int i = 0; i < testNum; i++) {
-			pqList[i].updateThreadPriority((ThreadState) ps.getThreadState(threads[i]));
-			//			System.out.println(ps.getEffectivePriority(threads[i])); // check to see if priorities got changed
-		}
-		System.out.println("Machine didn't lag out, test partially successful.");
-
-		// Brian Tan: This logic is incorrect; you don't always have to be priorityMaximum if you are modding
-		//		for (int i = 0; i < testNum; i++) {;
-		//			if (testNum > priorityMaximum) {
-		//				if (ps.getEffectivePriority(threads[i]) != priorityMaximum) {
-		//					System.out.println("TEST FAIL.");
-		//				}
-		//			} else {
-		//				if (ps.getEffectivePriority(threads[i]) != (testNum-1)) {
-		//					System.out.println("TEST FAIL.");
-		//				}
-		//			}
-		//		}
-		System.out.println("Test getEffectivePriority loop Complete!");
-
 
 		/*
 		 * TEST 3 Jonathan Eng
