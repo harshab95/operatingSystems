@@ -231,9 +231,9 @@ public class Communicator {
 		boolean allTestsPassed = true;
 		System.out.println("== Testing Communicator.java. ==");
 		try {
-			allTestsPassed = selfTest(20, 20) && allTestsPassed;
+			allTestsPassed = selfTest(10, 10) && allTestsPassed;
 		} catch (Exception e) {
-			System.out.println("***ERROR: Exception thrown; test failed.  selfTest() will NOT continue executing tests.");
+			System.err.println(e);
 			allTestsPassed = false;
 		}
 		return allTestsPassed;

@@ -292,6 +292,7 @@ public class KThread {
 			Lib.assertTrue(this.schedulingState != null); //TODO can this be guaranteed?
 			((ThreadState) this.schedulingState).joinedParentThread = parentThread;
 			currentThread().sleep();
+			ready();
 		}
 		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 	}
