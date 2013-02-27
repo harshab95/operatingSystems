@@ -28,7 +28,6 @@ public class Boat
 		BoatGrader b = new BoatGrader();
 		System.out.println("Test for Boat: testing with 0 Adults and 2 Children");
 		begin(0, 2, b); 
-		begin(3,4,b);
 	}
 	
 	public static void selfTest2() {
@@ -98,6 +97,10 @@ public class Boat
 
 		// Create threads here. See section 3.4 of the Nachos for Java
 		// Walkthrough linked from the projects page.
+		
+		/*
+		 * Creates Adult Threads
+		 */
 		finishLock.acquire();
 		for(int i=0; i<adults; i++) {
 			Runnable r = new Runnable() {
@@ -109,6 +112,9 @@ public class Boat
 			n.setName(""+i);
 			n.fork();
 		}
+		/*
+		 * Creates Child Threads
+		 */
 		for(int i=adults; i<children+adults; i++) {
 			Runnable s = new Runnable() {
 				public void run() {
@@ -120,17 +126,24 @@ public class Boat
 			n.fork();
 		}
 
+		/*
+		 * Continuous check to see if simulation is finished.
+		 */
 		while(ActualNumAdultOnMolokai + ActualNumChildOnMolokai != adults + children) {
 			finishCondition.wake();
 			finishCondition.sleep();
 		}
 		finished = true;
-		System.out.println("Simulation has finished");
+		finishCondition.sleep();
+		//System.out.println("Simulation has finished");
 	}
 
 
 	static void AdultItinerary()
 	{
+		/*
+		 * Checks into Oahu and sees how many people are on the island.
+		 */
 		ActualNumAdultOnOahu++;
 		int numChildOnOahu = ActualNumChildOnOahu;
 		int numAdultOnOahu = ActualNumAdultOnOahu;
@@ -138,8 +151,10 @@ public class Boat
 		int numAdultOnMolokai = ActualNumAdultOnMolokai;
 		String currentIsland = "Oahu";
 		pilotLock.acquire();
-		while(!finished) {
-			
+		/*
+		 * Begin algorithm.
+		 */
+		while(!finished) {	
 			if(currentIsland.equals("Oahu")) {
 				numChildOnOahu = ActualNumChildOnOahu;
 				numAdultOnOahu = ActualNumAdultOnOahu;
@@ -150,6 +165,7 @@ public class Boat
 					numAdultOnOahu = ActualNumAdultOnOahu;
 				}
 				bg.AdultRowToMolokai();
+				//update variables
 				ActualNumAdultOnOahu--;
 				ActualNumAdultOnMolokai++;
 				numChildOnOahu = ActualNumChildOnOahu;
@@ -170,6 +186,7 @@ public class Boat
 				}
 				if(numChildOnMolokai==0) {
 					bg.AdultRowToOahu();
+					//updates variables
 					ActualNumAdultOnOahu++;
 					ActualNumAdultOnMolokai--;
 					numChildOnOahu = ActualNumChildOnOahu;
@@ -222,6 +239,7 @@ public class Boat
 							}
 							//boat now has 2 children on it
 							bg.ChildRowToMolokai();
+							//updates variables
 							ActualNumChildOnOahu--;
 							ActualNumChildOnMolokai++;
 							boatLocation = "Molokai";
@@ -235,7 +253,6 @@ public class Boat
 							numAdultOnOahu = ActualNumAdultOnOahu;
 							numChildOnMolokai = ActualNumChildOnMolokai;
 							numAdultOnMolokai = ActualNumAdultOnMolokai;
-
 						}
 						else { //there is already a child pilot
 							if(!boatHasChildAsRider) {
@@ -264,7 +281,7 @@ public class Boat
 						pilot.sleep();
 					}
 					else /*if(numChildOnOahu + numAdultOnOahu==1)*/ {
-						System.out.println("EndSequence started");
+						//System.out.println("EndSequence started");
 						//tryToFinish();
 						//go into endsequence
 						bg.ChildRowToMolokai();
@@ -276,31 +293,25 @@ public class Boat
 						numAdultOnMolokai = ActualNumAdultOnMolokai;
 						boatLocation = "Molokai";
 						currentIsland = "Molokai";
-						finishLock.acquire();
 						boolean intStatus = Machine.interrupt().disable();
+						finishLock.acquire();
 						finishCondition.wake();
-						finishCondition.sleep();
-						Machine.interrupt().restore(intStatus);
-						alarm.waitUntil(30);
-						bg.ChildRowToOahu();
-						ActualNumChildOnOahu++;
-						ActualNumChildOnMolokai--;
-						numChildOnOahu = ActualNumChildOnOahu;
-						numAdultOnOahu = ActualNumAdultOnOahu;
-						numChildOnMolokai = ActualNumChildOnMolokai;
-						numAdultOnMolokai = ActualNumAdultOnMolokai;
-						boatLocation = "Oahu";
-						currentIsland = "Oahu";
-						
+						finishLock.release();
+						Machine.interrupt().restore(intStatus);						
 					}
 				}
 			}
-
-
 			else { //Child is on Molokai
 				numChildOnMolokai = ActualNumChildOnMolokai;
 				numAdultOnMolokai = ActualNumAdultOnMolokai;
-				if(boatLocation.equals("Molokai") && !boatHasChildAsRider) {
+				if(numChildOnOahu + numAdultOnOahu ==0) {
+					boolean intStatus = Machine.interrupt().disable();
+					finishLock.acquire();
+					finishCondition.wake();
+					finishLock.release();
+					Machine.interrupt().restore(intStatus);	
+				}
+				else if(boatLocation.equals("Molokai") && !boatHasChildAsRider) {
 					bg.ChildRowToOahu();
 					ActualNumChildOnOahu++;
 					ActualNumChildOnMolokai--;
@@ -313,9 +324,20 @@ public class Boat
 					//error is happening because this thread goes to Oahu before rider comes back?
 				}
 			}
+			//System.out.println(ActualNumChildOnOahu + ":" + ActualNumAdultOnOahu);
+			boolean intStatus = Machine.interrupt().disable();
+			finishLock.acquire();
+			finishCondition.wake();
+			finishLock.release();
+			Machine.interrupt().restore(intStatus);	
 			pilot.wake();
 			pilot.sleep();
 		}
+		boolean intStatus = Machine.interrupt().disable();
+		finishLock.acquire();
+		finishCondition.wake();
+		finishLock.release();
+		Machine.interrupt().restore(intStatus);	
 		pilot.sleep();
 	}
 
