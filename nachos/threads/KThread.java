@@ -297,7 +297,6 @@ public class KThread {
 			Lib.assertTrue(this.schedulingState != null); //TODO can this be guaranteed?
 			PriorityScheduler ps = new PriorityScheduler();
 			(ps.getThreadState(this)).joinedParentThread = parentThread;
-			(ps.getThreadState(this)).dirtyPriority = true;
 			
 			currentThread().sleep();
 		}
