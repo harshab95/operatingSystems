@@ -548,14 +548,14 @@ public class PriorityScheduler extends Scheduler {
 			if (updatedThreads.contains(this.thread)) {
 				return;
 			}
-					
-			// Check if transferPriority is true or false, false is easy case
-			if (transferPriority == false) {
-				return;
-			}
 			
 			// Also need to check if the thread this threadState is on, has a different transferPriority setting
 			if (this.queueWaitingOn != null && this.queueWaitingOn.transferPriority == false) {
+				return;
+			}
+					
+			// Shouldn't need this check ... Check if transferPriority is true or false, false is easy case
+			if (transferPriority == false) {
 				return;
 			}
 
