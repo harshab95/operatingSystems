@@ -34,6 +34,12 @@ public class PriorityScheduler extends Scheduler {
 	 * Custom self test made for this.
 	 */
 	public static int defaultNumToTest = 20;
+	
+	/**
+	 * Testing variables
+	 */
+	static boolean kt2start, kt1start, testFinished = false;
+	
 	public static void selfTest() {
 		selfTest(defaultNumToTest);
 	}
@@ -67,8 +73,6 @@ public class PriorityScheduler extends Scheduler {
 				ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
 			}
 		}
-		
-		
 		System.out.println("Running tests and popping off queue");
 		
 		KThread curThread = pq.currentThread;
@@ -211,7 +215,46 @@ public class PriorityScheduler extends Scheduler {
 		for (int i = 0; i < stressCount; i++) {
 			stressedThreads[i].join();
 		}
-			
+		System.out.println("\n --------- Test 5 Join test");
+		System.out.println(" --------- Initializing test"); 
+		pq = (PriorityQueue) ps.newThreadQueue(true);
+		final KThread kt1 = new KThread(new Runnable() {
+			public void run() {
+				while (kt2start == false) {
+					KThread.yield();
+					System.out.println("Still in kt1 while loop");
+				}
+				testFinished = true;
+			}
+		});
+		kt1.setName("kt1");
+		
+		final KThread kt2 = new KThread(new Runnable() {
+			public void run() {
+				System.out.println("Running kt2");
+				kt2start = true;
+				kt1.join();
+				System.out.println("Finished joining kt2 on kt1");
+			}
+		});
+		kt1.setName("kt2");
+		
+		System.out.println("Setting priorities for kt 1 -4"); 
+		ps.setPriority(kt1, 1);
+		ps.setPriority(kt2, 2);
+		
+		System.out.println("Forking...");
+		kt1.fork();
+		kt2.fork();
+		while (!testFinished) {
+			KThread.yield();
+		}
+//		System.out.println("Joining...");
+//		kt1.join();
+//		kt2.join();
+		
+		Lib.assertTrue(testFinished);
+		
 		System.out.println("\n ---------PriorityScheduler test successful");
 		
 	}
@@ -545,7 +588,6 @@ public class PriorityScheduler extends Scheduler {
 		private void updateEffectivePriority(boolean transferPriority) {
 			// Check if transferPriority is true or false, false is easy case
 			if (transferPriority == false) {
-				this.effectivePriority = this.priority;
 				return;
 			}
 

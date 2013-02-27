@@ -285,6 +285,9 @@ public class KThread {
 		
 		//TODO disabled machine interrupts not sure if supposed to
 		boolean intStatus = Machine.interrupt().disable();		
+		if (parentThread != null) {
+			return;
+		}
 		if (status == statusFinished) {
 			return;
 		} else {
@@ -387,6 +390,8 @@ public class KThread {
 			toBeDestroyed.tcb = null;
 			toBeDestroyed = null;
 		}
+		//CHECK
+		Machine.interrupt().enable();
 	}
 
 	/**
