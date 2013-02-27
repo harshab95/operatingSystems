@@ -15,7 +15,7 @@ public class Communicator {
 	private int numSpeakers, numListeners;
 	private boolean messageFieldInUse;
 	private Lock communicatorLock;
-	private Condition okToSpeak, okToListen, okToFinish;	// TODO Switch back to Condition2.
+	private Condition2 okToSpeak, okToListen, okToFinish;
 
 	/**
 	 * Allocate a new communicator.
@@ -25,9 +25,9 @@ public class Communicator {
 		numListeners = 0;
 		messageFieldInUse = false;
 		communicatorLock = new Lock();
-		okToSpeak = new Condition(communicatorLock);
-		okToListen = new Condition(communicatorLock);
-		okToFinish = new Condition(communicatorLock);
+		okToSpeak = new Condition2(communicatorLock);
+		okToListen = new Condition2(communicatorLock);
+		okToFinish = new Condition2(communicatorLock);
 	}
 
 	/**
@@ -46,23 +46,19 @@ public class Communicator {
 		numSpeakers++;
 
 		if (numListeners == 0 || numSpeakers > 1) {
-			// System.out.println("Speaker about to sleep.");	// TODO
 			okToSpeak.sleep();
 		}
 
 		// At this point, a speaker-listener pair exists.  Wake up the listener and transmit the message.
-		// System.out.println("Speaker woke up, signalling listener.");//TODO
 		okToListen.wake();
 
 		// Extra check: if transmitted message hasn't been received, don't transmit new one.
 		while (messageFieldInUse) {
-			// System.out.println("Speaker waiting to transmit message."); // TODO
 			okToSpeak.sleep();
 		}
 
 		// When this point is reached, our speaker has found a listener.
 		transmitMessage(word);
-		// System.out.println("Speaker transmitted message"); // TODO
 		numSpeakers--;
 		okToFinish.wake();	// Ready to read the transmitted message.
 		remainingSpeakers--;	// TODO Testing purposes only.
@@ -82,21 +78,17 @@ public class Communicator {
 		numListeners++;
 
 		if (numSpeakers == 0 || numListeners > 1) {
-			// System.out.println("Listener preparing to sleep");	// TODO
 			okToListen.sleep();
 		}
 		// At this point, a listener-speaker pairing exists.  Wake up the speaker and wait for message to be written.
-		// System.out.println("Listener calling okToSpeak.wake()");	// TODO
 		okToSpeak.wake();
 
 		while (!messageFieldInUse) {
-			// System.out.println("Listener waiting to retrieve a message, but no message, okToFinish.sleep()"); 	// TODO
 			okToFinish.sleep();
 		}
 
 		// Reach this point ONLY when okToFinish.wake() was called - which occurs 
 		// only in speak().  Thus, we KNOW that a message is available now.
-		// System.out.println("Finish woke up and is about to retrieve message");	//TODO
 		int toReturn = retrieveMessage();
 		numListeners--;
 		remainingListeners--;	// TODO Testing purposes only.
@@ -113,7 +105,6 @@ public class Communicator {
 		Lib.assertTrue(!messageFieldInUse);
 		messageFieldInUse = true;
 		this.message = message;
-		// System.out.println("Transmitted message.");	// TODO
 	}
 
 	/**
@@ -127,8 +118,6 @@ public class Communicator {
 		int toReturn = this.message;
 		messageFieldInUse = false;
 		okToSpeak.wake();	// Wake up a speaker who had to sleep because message hadn't been read yet.
-
-		// System.out.println("***Retrieving message.");	//TODO
 		return toReturn;
 	}
 
@@ -150,6 +139,7 @@ public class Communicator {
 
 		remainingSpeakers = 0;
 		remainingListeners = 0;
+
 		KThread[] speakers = new KThread[numTestSpeakers];
 		KThread[] listeners = new KThread[numTestListeners];
 		boolean testResult = false;
@@ -193,23 +183,27 @@ public class Communicator {
 		}
 		System.out.println(testMessageHeader + "Listeners finished forking.");
 
-		// Joining.
-		// TODO Seems like if we don't join() the threads, speak()/listen() will not run.  But if you do, then we wait indefinitely when calling 2nd test (because thread sleeps, and no speaker wakes it up).
-		for (i = 0; i < numTestSpeakers; i++) {
-			speakers[i].join();
-			System.out.println(testMessageHeader + "Speaker "+i+" joined.");
+		// Joining.  To ensure that we're not put to sleep, only call join() on the pairs that must have returned.
+		// We have counters which keep track of state otherwise.
+		if (numTestSpeakers <= numTestListeners) {
+			for (i = 0; i < numTestSpeakers; i++) {
+				speakers[i].join();
+				System.out.println(testMessageHeader + "Speaker "+i+" joined.");
+			}
 		}
-		System.out.println(testMessageHeader + "Speakers finished joining.");
 
-		for (i = 0; i < numTestListeners; i++) {
-			listeners[i].join();
-			System.out.println(testMessageHeader + "Listener "+i+" joined.");
+		if (numTestListeners <= numTestSpeakers) {
+			for (i = 0; i < numTestListeners; i++) {
+				listeners[i].join();
+				System.out.println(testMessageHeader + "Listener "+i+" joined.");
+			}
+
 		}
-		System.out.println(testMessageHeader + "Listeners finished joining.");
 
-		// Print error messages as necessary, then return.
+		// Print error messages as necessary.
 		int numExpectedPairs = Math.min(numTestSpeakers, numTestListeners);
 		int numExpectedRemainders = Math.max(numTestSpeakers, numTestListeners) - numExpectedPairs;
+
 		if (numTestSpeakers < numTestListeners) {
 			System.out.println(testMessageHeader + "Expected remaining speakers: 0,  remaining listeners: " + numExpectedRemainders + "\n" +
 					testMessageSpace + "Actual   remaining speakers: " + remainingSpeakers + ",  remaining listeners: " + remainingListeners);
@@ -220,6 +214,7 @@ public class Communicator {
 			testResult = (remainingSpeakers == numExpectedRemainders) && (remainingListeners == 0);
 		}
 
+		// Print result of test.
 		if (testResult) {
 			System.out.println("\n> " + testMessageHeader + "Test passed.");
 		} else {
@@ -236,8 +231,7 @@ public class Communicator {
 		boolean allTestsPassed = true;
 		System.out.println("== Testing Communicator.java. ==");
 		try {
-			allTestsPassed = selfTest(10, 10) && allTestsPassed;
-			allTestsPassed = selfTest(1, 2) && allTestsPassed;
+			allTestsPassed = selfTest(20, 20) && allTestsPassed;
 		} catch (Exception e) {
 			System.out.println("***ERROR: Exception thrown; test failed.  selfTest() will NOT continue executing tests.");
 			allTestsPassed = false;
