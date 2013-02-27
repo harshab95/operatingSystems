@@ -740,6 +740,8 @@ public class PriorityScheduler extends Scheduler {
 		protected KThread child = null;
 		protected java.util.PriorityQueue<KThread> parents = null;
 		protected KThread joinedParentThread = null;
+		
+		protected boolean dirtyPriority = false;
 	}
 
 
