@@ -350,7 +350,6 @@ public class PriorityScheduler extends Scheduler {
 	protected ThreadState getThreadState(KThread thread) {
 		if (thread.schedulingState == null)
 			thread.schedulingState = new ThreadState(thread);
-		//	TODO check if we can assume always ThreadState
 		Lib.assertTrue( ((ThreadState) thread.schedulingState).parents != null );
 
 		return (ThreadState) thread.schedulingState;
@@ -373,7 +372,6 @@ public class PriorityScheduler extends Scheduler {
 		 * @return is the queue is empty 
 		 */
 		public boolean isEmpty() {
-			//TODO can threads rely on this method?
 			return waitingThreads.isEmpty();
 		}
 
@@ -410,6 +408,7 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 
 			if (waitingThreads.isEmpty()) {
+				getThreadState(currentThread).noLongerCurrentThread(this);
 				currentThread = null;
 				return null;
 			}
@@ -518,6 +517,16 @@ public class PriorityScheduler extends Scheduler {
 		 * @return	the effective priority of the associated thread.
 		 */
 		public int getEffectivePriority() {
+			if (dirtyPriority) {
+				// have to recalculate 
+				if (queueWaitingOn != null) {
+					updateEffectivePriority(queueWaitingOn.transferPriority);
+				} else if (currentThreadQueue != null) {
+					updateEffectivePriority(currentThreadQueue.transferPriority);
+				} else {
+					updateEffectivePriority(true);
+				}
+			}
 			return effectivePriority;
 		}
 
@@ -574,6 +583,8 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		public void acquire(PriorityQueue waitQueue) {
 			queueWaitingOn = null;
+			currentThreadQueue = waitQueue;
+			Lib.assertTrue(child == null); //FIXME check logic
 			if (child != null) {
 				removeChild(waitQueue);
 			}
@@ -607,6 +618,7 @@ public class PriorityScheduler extends Scheduler {
 			
 			// Incorporates parents' priorities.
 			if (parents.peek() != null) {
+				Lib.assertTrue(getThreadState(getThreadState(parents.peek()).child) == this);
 				highestPriority = Math.max(highestPriority, getThreadState(parents.peek()).getEffectivePriority());
 			}
 			
@@ -633,6 +645,8 @@ public class PriorityScheduler extends Scheduler {
 			if (effectivePriority != oldEffectivePriority && queueWaitingOn != null) {
 				queueWaitingOn.updateThreadPriority(this);
 			}
+			
+			dirtyPriority = false;
 		}
 
 		/**
@@ -695,6 +709,7 @@ public class PriorityScheduler extends Scheduler {
 			// No longer waiting for a resource. 
 			queueWaitingOn = null;
 			child = null;
+			currentThreadQueue = waitQueue;
 
 			//Process parents.
 			//NOTE: you cannot just clear the current parents because you can
@@ -725,6 +740,10 @@ public class PriorityScheduler extends Scheduler {
 			}
 			
 		}
+		
+		protected void noLongerCurrentThread(PriorityQueue waitQueue) {
+			Lib.assertTrue(thread == waitQueue.currentThread);
+		}
 
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;
@@ -736,6 +755,7 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		private int effectivePriority = -1;
 
+		protected PriorityQueue currentThreadQueue = null; //set only if the current thread
 		protected PriorityQueue queueWaitingOn = null;
 		protected KThread child = null;
 		protected java.util.PriorityQueue<KThread> parents = null;
