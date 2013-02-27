@@ -1,6 +1,7 @@
 package nachos.threads;
 
 import nachos.machine.*;
+import nachos.threads.PriorityScheduler.ThreadState;
 
 /**
  * A KThread is a thread that can be used to execute Nachos kernel code. Nachos
@@ -288,6 +289,8 @@ public class KThread {
 			return;
 		} else {
 			parentThread = KThread.currentThread();
+			Lib.assertTrue(this.schedulingState != null); //TODO can this be guaranteed?
+			((ThreadState) this.schedulingState).joinedParentThread = parentThread;
 			currentThread().sleep();
 		}
 		Machine.interrupt().restore(intStatus); 				//Enable interrupts
@@ -473,6 +476,6 @@ public class KThread {
 	 * Added Fields  ****************************************
 	 */
 	/* Added for Part 1 Join */
-	KThread parentThread = null;
+	protected KThread parentThread = null;
 	
 }

@@ -545,7 +545,7 @@ public class PriorityScheduler extends Scheduler {
 		private void updateEffectivePriority(boolean transferPriority) {
 			// Check if transferPriority is true or false, false is easy case
 			if (transferPriority == false) {
-				this.effectivePriority = Math.max(this.priority, this.effectivePriority);
+				this.effectivePriority = this.priority;
 				return;
 			}
 
@@ -567,6 +567,12 @@ public class PriorityScheduler extends Scheduler {
 			if (parents.peek() != null) {
 				highestPriority = Math.max(highestPriority, getThreadState(parents.peek()).getEffectivePriority());
 			}
+			
+			// CASE: In case we are joined, also incorporated 
+			if (joinedParentThread != null) {
+				highestPriority = Math.max(highestPriority, getThreadState(joinedParentThread).getEffectivePriority());
+			}
+			
 			this.effectivePriority = highestPriority;
 			/*
 			 * Second, compare parent's highest "donated" priority with my own native priority
@@ -579,8 +585,10 @@ public class PriorityScheduler extends Scheduler {
 
 			/*
 			 * Case: Check if I have parents but am still waiting for another resource
+			 * basically I'm still in the waitingThreads queue and need to be pulled out for a 
+			 * reordering of priority
 			 */
-			if (queueWaitingOn != null) {
+			if (effectivePriority != oldEffectivePriority && queueWaitingOn != null) {
 				queueWaitingOn.updateThreadPriority(this);
 			}
 		}
@@ -660,6 +668,21 @@ public class PriorityScheduler extends Scheduler {
 			//CHECK: Although it shouldn't (ask yourself why)!!
 			updateEffectivePriority(waitQueue.transferPriority);
 		}
+		
+		protected void gotJoined(KThread parThread) {
+			/*
+			 * Only one parent can be joined at any time since a second call of join on this thread 
+			 * has undefined behavior. 
+			 */
+			this.joinedParentThread = parThread;
+			if (queueWaitingOn != null) {
+				updateEffectivePriority(queueWaitingOn.transferPriority);
+			}
+			else {
+				updateEffectivePriority(queueWaitingOn.transferPriority);
+			}
+			
+		}
 
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;
@@ -674,6 +697,7 @@ public class PriorityScheduler extends Scheduler {
 		protected PriorityQueue queueWaitingOn = null;
 		protected KThread child = null;
 		protected java.util.PriorityQueue<KThread> parents = null;
+		protected KThread joinedParentThread = null;
 	}
 
 
