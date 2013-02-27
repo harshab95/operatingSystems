@@ -354,8 +354,10 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 
 			if (waitingThreads.isEmpty()) {
-				getThreadState(currentThread).noLongerCurrentThread(this);
-				currentThread = null;
+				if (currentThread != null) {
+					getThreadState(currentThread).noLongerCurrentThread(this);
+					currentThread = null;
+				}
 				return null;
 			}
 			// Process the currentThread's parents it also updates effective priority 

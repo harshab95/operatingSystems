@@ -193,13 +193,13 @@ public class KThread {
 		Lib.assertTrue(toBeDestroyed == null);
 		toBeDestroyed = currentThread;
 
-
-		currentThread.status = statusFinished;
-
 		//For join
 		if (currentThread().parentThread != null) {
 			currentThread().parentThread.ready();
 		}
+
+		currentThread.status = statusFinished;
+
 		
 		sleep();
 	}
@@ -285,20 +285,13 @@ public class KThread {
 		
 		//TODO disabled machine interrupts not sure if supposed to
 		boolean intStatus = Machine.interrupt().disable();		
-		if (parentThread != null) {
-			Machine.interrupt().restore(intStatus);
-			return;
-		}
-		if (status == statusFinished) {
-			Machine.interrupt().restore(intStatus);
-			return;
+		if (parentThread != null || status == statusFinished) {
+			
 		} else {
 			parentThread = KThread.currentThread();
-//			Lib.assertTrue(this.schedulingState != null); //TODO can this be guaranteed?
 			PriorityScheduler ps = new PriorityScheduler();
-			(ps.getThreadState(this)).joinedParentThread = parentThread;
-			
-			currentThread().sleep();
+			(ps.getThreadState(this)).gotJoined(parentThread);
+			KThread.sleep();
 		}
 		Machine.interrupt().restore(intStatus); 				//Enable interrupts
 	}
