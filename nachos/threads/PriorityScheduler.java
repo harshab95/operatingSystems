@@ -585,7 +585,7 @@ public class PriorityScheduler extends Scheduler {
 		 * -> child (only 1 child) tree.
 		 * NOTE: Should be able to do this even if I don't have a child
 		 */
-		private void updateEffectivePriority(boolean transferPriority) {
+		protected void updateEffectivePriority(boolean transferPriority) {
 			// Check if transferPriority is true or false, false is easy case
 			if (transferPriority == false) {
 				return;
@@ -619,7 +619,6 @@ public class PriorityScheduler extends Scheduler {
 			/*
 			 * Second, compare parent's highest "donated" priority with my own native priority
 			 */
-
 			// Must check even if we have less effective priority than before.
 			if (effectivePriority != oldEffectivePriority && child != null) {
 				getThreadState(child).updateEffectivePriority(transferPriority);

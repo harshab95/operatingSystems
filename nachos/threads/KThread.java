@@ -286,14 +286,18 @@ public class KThread {
 		//TODO disabled machine interrupts not sure if supposed to
 		boolean intStatus = Machine.interrupt().disable();		
 		if (parentThread != null) {
+			Machine.interrupt().restore(intStatus); 				//Enable interrupts
 			return;
 		}
 		if (status == statusFinished) {
+			Machine.interrupt().restore(intStatus); 				//Enable interrupts
 			return;
 		} else {
 			parentThread = KThread.currentThread();
-			Lib.assertTrue(this.schedulingState != null); //TODO can this be guaranteed?
-			((ThreadState) this.schedulingState).joinedParentThread = parentThread;
+			PriorityScheduler ps = new PriorityScheduler();
+			//Lib.assertTrue(this.schedulingState != null); //TODO can this be guaranteed?
+			ps.getThreadState(this).joinedParentThread = parentThread;
+			ps.getThreadState(this).updateEffectivePriority(true);
 			currentThread().sleep();
 		}
 		Machine.interrupt().restore(intStatus); 				//Enable interrupts
