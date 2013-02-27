@@ -309,7 +309,7 @@ public class PriorityScheduler extends Scheduler {
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
 			int initialCapacity = 10;
-			this.waitingThreads = new PriorityBlockingQueue<PriorityQueueEntry>(initialCapacity, new PriorityTimeComparator());
+			this.waitingThreads = new java.util.PriorityQueue<PriorityScheduler.PriorityQueueEntry>(1, new PriorityTimeComparator());
 			this.currentThread = null;
 		}
 
@@ -419,7 +419,7 @@ public class PriorityScheduler extends Scheduler {
 		/**
 		 * Added fields
 		 */
-		PriorityBlockingQueue<PriorityQueueEntry> waitingThreads = null;
+		java.util.PriorityQueue<PriorityQueueEntry> waitingThreads = null;
 		KThread currentThread = null;
 	}
 
