@@ -597,6 +597,10 @@ public class PriorityScheduler extends Scheduler {
 				//Start of the updating process
 				updatedThreads = new HashSet<KThread>();
 			}
+			
+			if (updatedThreads.contains(this.thread)) {
+				return;
+			}
 					
 			// Check if transferPriority is true or false, false is easy case
 			if (transferPriority == false) {
