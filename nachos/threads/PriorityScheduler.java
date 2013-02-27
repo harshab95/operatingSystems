@@ -687,7 +687,7 @@ public class PriorityScheduler extends Scheduler {
 				updateEffectivePriority(queueWaitingOn.transferPriority);
 			}
 			else {
-				updateEffectivePriority(queueWaitingOn.transferPriority);
+				updateEffectivePriority(true);
 			}
 
 		}
