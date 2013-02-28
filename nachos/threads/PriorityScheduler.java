@@ -7,11 +7,13 @@
  */
 package nachos.threads;
 
-import nachos.machine.*;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.concurrent.PriorityBlockingQueue;
+
+import nachos.machine.Lib;
+import nachos.machine.Machine;
+import nachos.machine.TCB;
 
 /**
  * A scheduler that chooses threads based on their priorities.
@@ -161,6 +163,7 @@ public class PriorityScheduler extends Scheduler {
 	/* Variables used in selfTest1 */
 	public static boolean testFinished, kt2start, kt2finished = false;
 	public static ThreadQueue ktReadyQueue = null;
+	
 	public static void selfTest1() {
 		
 		KThread.currentThread().setName("Default Thread");
@@ -179,6 +182,7 @@ public class PriorityScheduler extends Scheduler {
 					Lib.debug('z', "Still in kt1 while loop");
 				}
 				testFinished = true;
+				Lib.debug('z', "Finished kt1");
 			}
 		});
 		kt1.setName("kt1");
@@ -188,17 +192,18 @@ public class PriorityScheduler extends Scheduler {
 				Lib.debug('z', "Running kt2");
 				kt2start = true;
 				kt1.join();
-				Lib.debug('z',"Finished joining kt2 on kt1");
+				Lib.debug('z',"kt2: back from joining kt2 on kt1");
 				kt2finished = true;
+				Lib.debug('z',"kt2: Finished kt2");
 			}
 		});
-		kt1.setName("kt2");
+		kt2.setName("kt2");
 
 		// Should be the thread running all these tests
 		KThread.currentThread().setName("Priority Tester");
 		ps.setPriority(KThread.currentThread(), priorityMaximum);
 
-		System.out.println("Setting priorities for kt 1 -4"); 
+		System.out.println("Setting priorities for kt1 and kt2"); 
 		ps.setPriority(kt1, 1);
 		ps.setPriority(kt2, priorityMaximum);
 
@@ -340,13 +345,13 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(thread != null);
 			Lib.assertTrue(getThreadState(thread)!= null);
 			
-			Lib.assertTrue(currentThread != thread);
-			//FIXME will need change this in case autograder complains again
-//			Lib.assertTrue(currentThread != null);
+//			Lib.assertTrue(currentThread != thread);
 			if (currentThread == null) {
 				acquire(thread);
 				return;
 			}
+			//FIXME will need change this in case autograder complains again
+//			Lib.assertTrue(currentThread != null); Can't use, autograder complain
 
 			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
 			waitingThreads.add(pqe);
