@@ -339,11 +339,13 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			Lib.assertTrue(thread != null);
 			Lib.assertTrue(getThreadState(thread)!= null);
-
+			
+			Lib.assertTrue(currentThread != thread);
 			//FIXME will need change this in case autograder complains again
 //			Lib.assertTrue(currentThread != null);
 			if (currentThread == null) {
 				acquire(thread);
+				return;
 			}
 
 			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
@@ -473,8 +475,8 @@ public class PriorityScheduler extends Scheduler {
 
 			cst.effectivePriority = highestPriority;
 
-			// Set queueWaiting on to refresh it's priority
 			Lib.assertTrue(cst.queueWaitingOn != this);
+			// Set queueWaiting on to refresh it's priority
 			if (cst.queueWaitingOn != null) {
 				/*
 				 * Extra check: check if the currentThread of the child queue (queueWaitingOn)
@@ -577,6 +579,8 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(this.queueWaitingOn == null);
 
 			this.queueWaitingOn = waitQueue;
+			//Otherwise we should have acquired
+			Lib.assertTrue(waitQueue.currentThread != this.thread);
 			//Now that I'm on the queue, must update the priority
 			waitQueue.updateCurrentThreadPriority_Recursive();
 		}
@@ -599,7 +603,7 @@ public class PriorityScheduler extends Scheduler {
 			 * null: never was waiting for anything, just got in.
 			 * not null: was waiting and now that I have it, reset queueWaitingOn to null
 			 */
-			queueWaitingOn = null; 
+			this.queueWaitingOn = null; 
 
 			Lib.assertTrue(queueWaitingOn == null); // For super safety precaution
 			waitQueue.updateCurrentThreadPriority_Recursive(); //update my own priority 
@@ -632,6 +636,7 @@ public class PriorityScheduler extends Scheduler {
 		 * our priority before that.
 		 */
 		protected void refreshEffectivePriorityAfterRemoval() {
+// 			The Autograde is somehow able to get it on the queue without using acquire?
 //			Lib.assertTrue(queueWaitingOn == null);
 
 			int highestPriority = this.priority;
