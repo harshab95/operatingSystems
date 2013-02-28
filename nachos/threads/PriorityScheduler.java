@@ -3,6 +3,7 @@ package nachos.threads;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.concurrent.PriorityBlockingQueue;
 
 import nachos.machine.Lib;
@@ -39,136 +40,146 @@ public class PriorityScheduler extends Scheduler {
 	/**
 	 * Testing variables
 	 */
-	static boolean kt2start, kt1start, testFinished = false;
+	static boolean kt2start, kt1start, testFinished, kt2finished = false;
 
 	public static void selfTest() {
 		selfTest(defaultNumToTest);
 	}
 	public static void selfTest(int numThreadsToTest) {
-		int testNum = Math.max(numThreadsToTest, 1);
-		boolean interrupt = Machine.interrupt().disable();
-
-		if (testNum <= 1) {
-			System.out.println("We have less than 2 threads. Aborting a useless test");
-			return;
-		}
-
-		System.out.println(" --------- Testing: " + testNum + " Threads."); 
-		System.out.println(" --------- Test 1 Make sure gets popped off in order of highest priority"); 
-		System.out.println(" --------- Initializing test"); 
-
-		PriorityScheduler ps = new PriorityScheduler();
-		PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
-		KThread[] threads = new KThread[testNum];
-
-
-		// Initialize all threads 
-
-		for (int i = 0; i < threads.length; i++) {
-			threads[i] = new KThread();
-			if (i == 0) {
-				pq.acquire(threads[i]);
-				ps.setPriority(threads[i], priorityMaximum);
-			} else {
-				pq.waitForAccess(threads[i]);
-				ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
-			}
-		}
-		System.out.println("Running tests and popping off queue");
-
-		KThread curThread = pq.currentThread;
-		int curPriority = ps.getThreadState(curThread).getEffectivePriority();
-		int upcomingPriority = priorityMinimum - 1;
-		for (int i = 1; i < threads.length; i++) {
-			upcomingPriority = ps.getThreadState(pq.nextThread()).getEffectivePriority();
-			if (upcomingPriority > curPriority) {
-				System.out.println("Error at i = " + i);
-				break;
-			}
-		}
-		System.out.println("**PriorityScheduler test 1 successful\n");
-
-
-
-		/*
-		 * TEST 3 Jonathan Eng
-		 */
-		System.out.println("\n --------- Test 3 Priority Inversion Test");
-		System.out.println(" --------- Initializing test"); 
-
-		// Thread c will have the highest priority, wait on a( lowest) whereas b is also on the ready queue
-		KThread pq1low,pq1high,pq2low,pq2high;
-		pq1low = new KThread();
-		pq1low.setName("pq1low");
-		pq1high = new KThread();
-		pq1high.setName("pq1high");
-
-		pq2low = new KThread();
-		pq2low.setName("pq2low");
-		pq2high = new KThread();
-		pq2high.setName("pq2high");
-
-		ps.setPriority(pq1low, 0);
-		ps.setPriority(pq1high, 3);
-		ps.setPriority(pq2low, 1);
-		ps.setPriority(pq2high, 2);
-
-		PriorityQueue pq1 = (PriorityQueue) ps.newThreadQueue(true);	
-		PriorityQueue pq2 = (PriorityQueue) ps.newThreadQueue(true);
-		pq1.acquire(pq1low);
-		pq2.acquire(pq2low);
-		pq1.waitForAccess(pq1high);
-		pq2.waitForAccess(pq2high);
-		pq2.waitForAccess(pq1low); //pq1high should donate priority to pq1low
-
-		Lib.assertTrue(pq2.nextThread() == pq1low);
-		Lib.assertTrue(pq2.nextThread() == pq2high);
-		Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == 0);
-		System.out.println("--------- Test 3 Priority Donation (Chain 1 queue) simple passed");
-
-		System.out.println("\n --------- Test 4 Lock stress test");
-		final int stressCount = Math.min(numThreadsToTest * 4, TCB.maxThreads -1);
-		System.out.println(" --------- Testing " + stressCount + " threads.");
-		System.out.println(" --------- Initializing test"); 
-
-		//Must have same locks, same # threads, 
-		final Lock[] stressLocks = new Lock[stressCount];
-		final KThread[] stressedThreads = new KThread[stressCount];
-
-		for (int i = 0; i < stressCount; i++) {
-			stressedThreads[i] = new KThread( new Runnable() {
-				public void run() {
-					for (int j = 0; j < stressCount; j = j + 4) {
-						stressLocks[j].acquire();
-						stressLocks[j+1].acquire();
-						stressLocks[j+2].acquire();
-						stressLocks[j+3].acquire();
-						stressLocks[j+3].release();
-						stressLocks[j+2].release();
-						stressLocks[j+1].release();
-						stressLocks[j].release();
+				int testNum = Math.max(numThreadsToTest, 1);
+				boolean interrupt = Machine.interrupt().disable();
+				if (testNum <= 1) {
+					System.out.println("We have less than 2 threads. Aborting a useless test");
+					return;
+				}
+		
+				System.out.println(" --------- Testing: " + testNum + " Threads."); 
+				System.out.println(" --------- Test 1 Make sure gets popped off in order of highest priority"); 
+				System.out.println(" --------- Initializing test"); 
+		
+				PriorityScheduler ps = new PriorityScheduler();
+				PriorityQueue pq = (PriorityQueue) ps.newThreadQueue(true);
+				KThread[] threads = new KThread[testNum];
+		
+		
+				// Initialize all threads 
+		
+				for (int i = 0; i < threads.length; i++) {
+					threads[i] = new KThread();
+					if (i == 0) {
+						pq.acquire(threads[i]);
+						ps.setPriority(threads[i], priorityMaximum);
+					} else {
+						pq.waitForAccess(threads[i]);
+						ps.setPriority(threads[i], Math.min(priorityMaximum, Math.max(i % (priorityMaximum + 1), priorityMinimum)) );
 					}
 				}
-			});
-			stressLocks[i] = new Lock();
-		}
+				System.out.println("Running tests and popping off queue");
+		
+				KThread curThread = pq.currentThread;
+				int curPriority = ps.getThreadState(curThread).getEffectivePriority();
+				int upcomingPriority = priorityMinimum - 1;
+				for (int i = 1; i < threads.length; i++) {
+					upcomingPriority = ps.getThreadState(pq.nextThread()).getEffectivePriority();
+					if (upcomingPriority > curPriority) {
+						System.out.println("Error at i = " + i);
+						break;
+					}
+				}
+				System.out.println("**PriorityScheduler test 1 successful\n");
+		
+		
+		
+				/*
+				 * TEST 3 Jonathan Eng
+				 */
+				System.out.println("\n --------- Test 3 Priority Inversion Test");
+				System.out.println(" --------- Initializing test"); 
+		
+				// Thread c will have the highest priority, wait on a( lowest) whereas b is also on the ready queue
+				KThread pq1low,pq1high,pq2low,pq2high;
+				pq1low = new KThread();
+				pq1low.setName("pq1low");
+				pq1high = new KThread();
+				pq1high.setName("pq1high");
+		
+				pq2low = new KThread();
+				pq2low.setName("pq2low");
+				pq2high = new KThread();
+				pq2high.setName("pq2high");
+		
+				ps.setPriority(pq1low, 0);
+				ps.setPriority(pq1high, 3);
+				ps.setPriority(pq2low, 1);
+				ps.setPriority(pq2high, 2);
+		
+				PriorityQueue pq1 = (PriorityQueue) ps.newThreadQueue(true);	
+				PriorityQueue pq2 = (PriorityQueue) ps.newThreadQueue(true);
+				pq1.acquire(pq1low);
+				pq2.acquire(pq2low);
+				pq1.waitForAccess(pq1high);
+				pq2.waitForAccess(pq2high);
+				pq2.waitForAccess(pq1low); //pq1high should donate priority to pq1low
+		
+				Lib.assertTrue(pq2.nextThread() == pq1low);
+				Lib.assertTrue(pq2.nextThread() == pq2high);
+				Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == 0);
+				System.out.println("--------- Test 3 Priority Donation (Chain 1 queue) simple passed");
+		
+				System.out.println("\n --------- Test 4 Lock stress test");
+				final int stressCount = Math.min(numThreadsToTest * 4, TCB.maxThreads -1);
+				System.out.println(" --------- Testing " + stressCount + " threads.");
+				System.out.println(" --------- Initializing test"); 
+		
+				//Must have same locks, same # threads, 
+				final Lock[] stressLocks = new Lock[stressCount];
+				final KThread[] stressedThreads = new KThread[stressCount];
+		
+				for (int i = 0; i < stressCount; i++) {
+					stressedThreads[i] = new KThread( new Runnable() {
+						public void run() {
+							for (int j = 0; j < stressCount; j = j + 4) {
+								stressLocks[j].acquire();
+								stressLocks[j+1].acquire();
+								stressLocks[j+2].acquire();
+								stressLocks[j+3].acquire();
+								stressLocks[j+3].release();
+								stressLocks[j+2].release();
+								stressLocks[j+1].release();
+								stressLocks[j].release();
+							}
+						}
+					});
+					stressLocks[i] = new Lock();
+				}
+		
+				System.out.println("Forking threads");
+				for (int i = 0; i < stressCount; i++) {
+					stressedThreads[i].fork();
+				}
+				System.out.println("joining threads");
+				for (int i = 0; i < stressCount; i++) {
+					stressedThreads[i].join();
+				}
 
-		System.out.println("Forking threads");
-		for (int i = 0; i < stressCount; i++) {
-			stressedThreads[i].fork();
-		}
-		System.out.println("joining threads");
-		for (int i = 0; i < stressCount; i++) {
-			stressedThreads[i].join();
-		}
-		System.out.println("\n --------- Test 5 Join test");
+
+	}
+
+	public static void selfTest1() {
+		KThread.currentThread().setName("Default Thread");
+		
+		System.out.println("\n --------- Join test");
 		System.out.println(" --------- Initializing test"); 
-		pq = (PriorityQueue) ps.newThreadQueue(true);
+		Lib.debug('z', "kt1finished: " + testFinished);
+		Lib.debug('z', "kt2finished: " + kt2finished);
+
+		PriorityScheduler ps = new PriorityScheduler();
+		boolean interrupt = Machine.interrupt().disable();
 		final KThread kt1 = new KThread(new Runnable() {
 			public void run() {
 				while (kt2start == false) {
 					KThread.yield();
-					System.out.println("Still in kt1 while loop");
+					Lib.debug('z', "Still in kt1 while loop");
 				}
 				testFinished = true;
 			}
@@ -177,13 +188,18 @@ public class PriorityScheduler extends Scheduler {
 
 		final KThread kt2 = new KThread(new Runnable() {
 			public void run() {
-				System.out.println("Running kt2");
+				Lib.debug('z', "Running kt2");
 				kt2start = true;
 				kt1.join();
-				System.out.println("Finished joining kt2 on kt1");
+				Lib.debug('z',"Finished joining kt2 on kt1");
+				kt2finished = true;
 			}
 		});
 		kt1.setName("kt2");
+
+		// Should be the thread running all these tests
+		KThread.currentThread().setName("Priority Tester");
+		ps.setPriority(KThread.currentThread(), priorityMaximum);
 
 		System.out.println("Setting priorities for kt 1 -4"); 
 		ps.setPriority(kt1, 1);
@@ -192,17 +208,26 @@ public class PriorityScheduler extends Scheduler {
 		System.out.println("Forking...");
 		kt1.fork();
 		kt2.fork();
-		while (!testFinished) {
+		kt2.join();
+		while (!testFinished || !kt2finished) {
 			KThread.yield();
+		}
+
+		if (!kt2finished) {
+			Lib.debug('z', "Shoudl not have printed this line.");
+		}
+		else
+		{
+			Lib.debug('z', "kt2finished");
 		}
 		//		System.out.println("Joining...");
 		//		kt1.join();
 		//		kt2.join();
 
 		Lib.assertTrue(testFinished);
+		Machine.interrupt().restore(interrupt);
 
 		System.out.println("\n ---------PriorityScheduler test successful");
-
 	}
 
 	/**
@@ -403,7 +428,6 @@ public class PriorityScheduler extends Scheduler {
 					Lib.assertTrue(tState.effectivePriority == pqe.threadState().getEffectivePriority());
 					waitingThreads.remove(pqe);
 					waitingThreads.add(pqe);
-					//TODO add a break statement?
 					break;
 				}
 			}
@@ -445,8 +469,7 @@ public class PriorityScheduler extends Scheduler {
 			// Some of these are for sanity checks, mostly unnecessary
 			this.effectivePriority = priority;
 			this.child = null;
-			this.parents = new java.util.PriorityQueue<KThread>(initialCapacity,
-					new PriorityComparator());
+			this.parents = new LinkedList<KThread>();
 			this.queueWaitingOn = null;
 		}
 
@@ -544,16 +567,16 @@ public class PriorityScheduler extends Scheduler {
 				//Start of the updating process
 				updatedThreads = new HashSet<KThread>();
 			}
-			
+
 			if (updatedThreads.contains(this.thread)) {
 				return;
 			}
-			
+
 			// Also need to check if the thread this threadState is on, has a different transferPriority setting
 			if (this.queueWaitingOn != null && this.queueWaitingOn.transferPriority == false) {
 				return;
 			}
-					
+
 			// Shouldn't need this check ... Check if transferPriority is true or false, false is easy case
 			if (transferPriority == false) {
 				return;
@@ -570,13 +593,14 @@ public class PriorityScheduler extends Scheduler {
 
 			//FIXME why is parents null added a weird check?
 			if (parents == null) {
-				parents = new java.util.PriorityQueue<KThread>();
+				parents = new LinkedList<KThread>();
 			}
 
 			// Incorporates parents' priorities.
-			if (parents.peek() != null) {
-				Lib.assertTrue(getThreadState(getThreadState(parents.peek()).child) == this);
-				highestPriority = Math.max(highestPriority, getThreadState(parents.peek()).getEffectivePriority());
+			for (KThread p:this.parents) {
+				Lib.assertTrue(getThreadState(getThreadState(p).child) == this);
+				Lib.assertTrue(p != null);
+				highestPriority = Math.max(highestPriority, getThreadState(p).getEffectivePriority());
 			}
 
 			// CASE: In case we are joined, also incorporated 
@@ -709,7 +733,7 @@ public class PriorityScheduler extends Scheduler {
 		protected PriorityQueue currentThreadQueue = null; //set only if the current thread
 		protected PriorityQueue queueWaitingOn = null;
 		protected KThread child = null;
-		protected java.util.PriorityQueue<KThread> parents = null;
+		protected LinkedList<KThread> parents = null;
 		protected KThread joinedParentThread = null;
 	}
 
@@ -722,10 +746,12 @@ public class PriorityScheduler extends Scheduler {
 	protected class PriorityQueueEntry {
 		private ThreadState threadState = null;
 		private long entryTime = 0;
+		private KThread thread = null;
 
 		public PriorityQueueEntry(ThreadState tState, long entryTime) {
 			threadState = tState;
 			this.entryTime = entryTime;
+			this.thread = tState.thread;
 		}
 
 		public int priority() {

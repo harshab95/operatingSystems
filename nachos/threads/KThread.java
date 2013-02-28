@@ -185,7 +185,7 @@ public class KThread {
 	 */
 	public static void finish() {
 		Lib.debug(dbgThread, "Finishing thread: " + currentThread.toString());
-
+		
 		Machine.interrupt().disable();
 
 		Machine.autoGrader().finishingCurrentThread();
@@ -288,6 +288,7 @@ public class KThread {
 		if (parentThread != null || status == statusFinished) {
 			
 		} else {
+			//Joined for first time
 			parentThread = KThread.currentThread();
 			PriorityScheduler ps = new PriorityScheduler();
 			(ps.getThreadState(this)).gotJoined(parentThread);
@@ -420,11 +421,14 @@ public class KThread {
 	 * selfTest() Tests whether this module is working.
 	 */
 	public static void selfTest() {
+		/* Original Test that came with nachos
 		Lib.debug(dbgThread, "Enter KThread.selfTest");
 
 		System.out.println("#### Starting KThread.selfTest() ####");
 		new KThread(new PingTest(1)).setName("forked thread").fork();
 		new PingTest(0).run();
+		*/
+		
 	}
 	
 	/**
