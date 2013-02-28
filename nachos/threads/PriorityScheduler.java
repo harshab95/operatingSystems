@@ -1,4 +1,9 @@
 //Version 2
+
+/*
+ * Major changelog:
+ * Fixed parents to be a LinkedList (of a ThreadState).
+ */
 package nachos.threads;
 
 import java.util.Comparator;
