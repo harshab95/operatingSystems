@@ -676,8 +676,8 @@ public class PriorityScheduler extends Scheduler {
 				Lib.assertTrue(getThreadState(p).child == this.thread);
 				oldParentsCurrentQueue[i] = p;
 				getThreadState(p).child = null;
+				parents.remove(p);
 			}
-			parents.clear(); //Should have no more parents;
 			Lib.assertTrue(parents != null);
 			updateEffectivePriority(currentQueue.transferPriority);
 			return oldParentsCurrentQueue;
