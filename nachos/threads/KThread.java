@@ -291,7 +291,7 @@ public class KThread {
 			//Joined for first time
 			parentThread = KThread.currentThread();
 			PriorityScheduler ps = new PriorityScheduler();
-			(ps.getThreadState(this)).gotJoined(parentThread);
+			(ps.getThreadState(this)).joinUpdate(parentThread);
 			KThread.sleep();
 		}
 		Machine.interrupt().restore(intStatus); 				//Enable interrupts

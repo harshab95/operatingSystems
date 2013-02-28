@@ -118,7 +118,7 @@ public class PriorityScheduler extends Scheduler {
 		Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == ps.getThreadState(pq1high).getEffectivePriority());
 		Lib.assertTrue(pq1.nextThread() == pq1high);
 		Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == 0);
-		
+
 		System.out.println("--------- Test 3 Priority Donation (Chain 1 queue) simple passed");
 
 		System.out.println("\n --------- Test 4 Lock stress test");
@@ -156,6 +156,72 @@ public class PriorityScheduler extends Scheduler {
 		for (int i = 0; i < stressCount; i++) {
 			stressedThreads[i].join();
 		}
+	}
+
+	/* Variables used in selfTest1 */
+	public static boolean testFinished, kt2start, kt2finished = false;
+	public static void selfTest1() {
+		KThread.currentThread().setName("Default Thread");
+
+		System.out.println("\n --------- Join test");
+		System.out.println(" --------- Initializing test"); 
+		Lib.debug('z', "kt1finished: " + testFinished);
+		Lib.debug('z', "kt2finished: " + kt2finished);
+
+		PriorityScheduler ps = new PriorityScheduler();
+		boolean interrupt = Machine.interrupt().disable();
+		final KThread kt1 = new KThread(new Runnable() {
+			public void run() {
+				while (kt2start == false) {
+					KThread.yield();
+					Lib.debug('z', "Still in kt1 while loop");
+				}
+				testFinished = true;
+			}
+		});
+		kt1.setName("kt1");
+
+		final KThread kt2 = new KThread(new Runnable() {
+			public void run() {
+				Lib.debug('z', "Running kt2");
+				kt2start = true;
+				kt1.join();
+				Lib.debug('z',"Finished joining kt2 on kt1");
+				kt2finished = true;
+			}
+		});
+		kt1.setName("kt2");
+
+		// Should be the thread running all these tests
+		KThread.currentThread().setName("Priority Tester");
+		ps.setPriority(KThread.currentThread(), priorityMaximum);
+
+		System.out.println("Setting priorities for kt 1 -4"); 
+		ps.setPriority(kt1, 1);
+		ps.setPriority(kt2, 2);
+
+		System.out.println("Forking...");
+		kt1.fork();
+		kt2.fork();
+		while (!testFinished || !kt2finished) {
+			KThread.yield();
+		}
+
+		if (!kt2finished) {
+			Lib.debug('z', "Shoudl not have printed this line.");
+		}
+		else
+		{
+			Lib.debug('z', "kt2finished");
+		}
+		//		System.out.println("Joining...");
+		//		kt1.join();
+		//		kt2.join();
+
+		Lib.assertTrue(testFinished);
+		Machine.interrupt().restore(interrupt);
+
+		System.out.println("\n ---------PriorityScheduler test successful");
 	}
 	/**
 	 * Allocate a new priority scheduler.
@@ -483,7 +549,7 @@ public class PriorityScheduler extends Scheduler {
 			this.priority = priority;
 			int oldEffectivePriority = this.effectivePriority;
 			this.effectivePriority = Math.max(priority, effectivePriority);
-			
+
 			if (oldEffectivePriority != effectivePriority && queueWaitingOn != null) {
 				queueWaitingOn.updateCurrentThreadPriority_Recursive();
 			}
@@ -529,7 +595,7 @@ public class PriorityScheduler extends Scheduler {
 			 * not null: was waiting and now that I have it, reset queueWaitingOn to null
 			 */
 			queueWaitingOn = null; 
-			
+
 			Lib.assertTrue(queueWaitingOn == null); // For super safety precaution
 			waitQueue.updateCurrentThreadPriority_Recursive(); //update my own priority 
 
@@ -551,7 +617,7 @@ public class PriorityScheduler extends Scheduler {
 				queueWaitingOn.updateCurrentThreadPriority_Recursive();
 			} 
 		}
-		
+
 		/** ONLY TO BE CALLED IN NEXT THREAD AFTER A THREAD HAS BEEN DETHRONED FROM BEING A CURRENT THREAD
 		 * Thus I am no longer in a queue and do not need to heed transferPriority. 
 		 * Ensure that I have removed the queue from parentQueues of the PriorityQueue I jsut got dethroned from.
@@ -562,12 +628,12 @@ public class PriorityScheduler extends Scheduler {
 		 */
 		protected void refreshEffectivePriorityAfterRemoval() {
 			Lib.assertTrue(queueWaitingOn == null);
-			
+
 			int highestPriority = this.priority;
 			for (PriorityQueue p: parentQueues) {
 				highestPriority = Math.max(highestPriority, p.highestPriority());
 			}
-			
+
 			if (parentJoinee != null) {
 				highestPriority = Math.max(highestPriority, getThreadState(parentJoinee).getEffectivePriority());
 			}
