@@ -328,6 +328,7 @@ public class KThread {
 			nextThread = idleThread;
 
 		nextThread.run();
+		
 	}
 
 	/**
