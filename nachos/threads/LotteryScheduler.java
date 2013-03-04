@@ -27,22 +27,22 @@ import java.util.Iterator;
  * the maximum).
  */
 public class LotteryScheduler extends PriorityScheduler {
-    /**
-     * Allocate a new lottery scheduler.
-     */
-    public LotteryScheduler() {
-    }
-    
-    /**
-     * Allocate a new lottery thread queue.
-     *
-     * @param	transferPriority	<tt>true</tt> if this queue should
-     *					transfer tickets from waiting threads
-     *					to the owning thread.
-     * @return	a new lottery thread queue.
-     */
-    public ThreadQueue newThreadQueue(boolean transferPriority) {
-	// implement me
-	return null;
-    }
+	/**
+	 * Allocate a new lottery scheduler.
+	 */
+	public LotteryScheduler() {
+	}
+
+	/**
+	 * Allocate a new lottery thread queue.
+	 *
+	 * @param	transferPriority	<tt>true</tt> if this queue should
+	 *					transfer tickets from waiting threads
+	 *					to the owning thread.
+	 * @return	a new lottery thread queue.
+	 */
+	public ThreadQueue newThreadQueue(boolean transferPriority) {
+		// implement me
+		return null;
+	}
 }
