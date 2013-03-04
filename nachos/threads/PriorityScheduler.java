@@ -331,7 +331,7 @@ public class PriorityScheduler extends Scheduler {
 	protected class PriorityQueue extends ThreadQueue {
 		PriorityQueue(boolean transferPriority) {
 			this.transferPriority = transferPriority;
-			this.waitingThreads = new PriorityBlockingQueue<PriorityScheduler.PriorityQueueEntry>(1, 
+			this.waitingThreads = new java.util.PriorityQueue<PriorityScheduler.PriorityQueueEntry>(1, 
 					new PriorityTimeComparator());
 			this.currentThread = null;
 		}
@@ -502,7 +502,7 @@ public class PriorityScheduler extends Scheduler {
 		/**
 		 * Added fields
 		 */
-		PriorityBlockingQueue<PriorityQueueEntry> waitingThreads = null;
+		java.util.PriorityQueue<PriorityQueueEntry> waitingThreads = null;
 		KThread currentThread = null;
 
 		public static final int INVALID_PRIORITY = priorityMinimum -1;
