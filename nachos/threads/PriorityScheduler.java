@@ -276,7 +276,7 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(thread != null);
 			Lib.assertTrue(getThreadState(thread)!= null);
 			/* Correctness and sanity checks */
-			Lib.assertTrue(thread != currentThread);
+//			Lib.assertTrue(thread != currentThread); perhaps okay if running thread wants to get back on readyQueue?
 
 			if (currentThread == null) {
 				Lib.assertTrue(waitingThreads.isEmpty());
