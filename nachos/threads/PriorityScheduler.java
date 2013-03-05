@@ -281,6 +281,7 @@ public class PriorityScheduler extends Scheduler {
 			if (currentThread == null) {
 				Lib.assertTrue(waitingThreads.isEmpty());
 				acquire(thread);
+				return;
 			}
 			//FIXME will need change this in case autograder complains again
 //			Lib.assertTrue(currentThread != null);
@@ -417,7 +418,7 @@ public class PriorityScheduler extends Scheduler {
 			if (cts.queueWaitingOn != null) {
 				/*
 				 * Extra check: check if the currentThread of the child queue (queueWaitingOn)
-				 * has this queue as a parent. Enforing child parent queue relationships
+				 * has this queue as a parent. Enforcing child parent queue relationships
 				 */
 				if (cts.queueWaitingOn.currentThread != null) {
 					Lib.assertTrue(getThreadState(cts.queueWaitingOn.currentThread).parentQueues.contains(this));
@@ -571,7 +572,8 @@ public class PriorityScheduler extends Scheduler {
 		 * our priority before that.
 		 */
 		protected void refreshEffectivePriorityAfterRemoval() {
-			Lib.assertTrue(queueWaitingOn == null);
+//			Lib.assertTrue(queueWaitingOn == null); removed check 
+//			as currentThread might be waiting for another resource. Imagine acquired C -> release B
 			
 			int highestPriority = this.priority;
 			for (PriorityQueue p: parentQueues) {
