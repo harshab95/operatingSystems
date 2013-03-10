@@ -5,6 +5,7 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
+import java.nio.ByteBuffer;
 import java.util.*;
 /**
  * Encapsulates the state of a user process that is not contained in its
@@ -19,13 +20,60 @@ import java.util.*;
  * @see	nachos.network.NetProcess
  */
 public class UserProcess {
-	
+
+	/** The program being run by this process. */
+	protected Coff coff;
+
+	/** This process's page table. */
+	protected TranslationEntry[] pageTable;
+
+	protected PageManager pageManager;
+
+	/** The number of contiguous pages occupied by the program. */
+	protected int numPages;
+
+	/** The number of pages in the program's stack. */
+	protected final int stackPages = 8;
+
+	private int initialPC, initialSP;
+	private int argc, argv;
+
+	private static final int pageSize = Processor.pageSize;
+	private static final char dbgProcess = 'a';
+
+	// Other data that a process should keep track of:
+	/** This process' assigned process ID, to be used mainly as an identifier for this process. **/
+	private int processId;
+
+	/** The process' status, to be used in exit and join syscalls. **/
+	private int status;
+
+	/** Stores a reference to the thread associated with this process.  According to @295 on Piazza, 
+	 * we assume that each UserProcess can only have one associated <tt>UThread</tt>.
+	 */
+	private UThread thread;
+
+	/** This map links a processId with the UserProcess representing the child process. **/
+	private Map<Integer, UserProcess> childProcesses;
+
+	// Parent.
+	private int parentProcessId;
+	private UserProcess parentProcess;
+
+	/** Reference to this process' associated <tt>FileDescriptorManager</tt>.  Keeps track of all 
+	 * of the individual file descriptors associated with the process.
+	 */
+	private FileDescriptorManager fileDescriptors;
+
+	/** Static counter which keeps track of the next unassigned processId which we can assign. **/
+	private static int nextProcessId = 0;
+
 	public class PageManager {
 		public static final int INVALID_PAGE = -1;
 		public LinkedList<UserKernel.Page> freePages = null;
 		public LinkedList<UserKernel.Page> usedPages = null;
 		public UserProcess parentProcess = null;
-		
+
 		public PageManager(LinkedList<UserKernel.Page> globalFreePages, UserProcess uProcess) {
 			Lib.assertTrue(globalFreePages!=null);
 			Lib.assertTrue(uProcess!=null);
@@ -33,7 +81,7 @@ public class UserProcess {
 			this.parentProcess = uProcess;
 			usedPages = new LinkedList<UserKernel.Page>();
 		}
-		
+
 		public UserKernel.Page getFreePage() {
 			Lib.assertTrue(freePages!=null);
 			boolean intStatus = Machine.interrupt().disable();
@@ -46,7 +94,7 @@ public class UserProcess {
 				return null;
 			}
 		}
-		
+
 		public void addFreePage(UserKernel.Page p) {
 			Lib.assertTrue(freePages!=null);
 			Lib.assertTrue(p!=null);
@@ -54,7 +102,7 @@ public class UserProcess {
 			freePages.push(p);
 			Machine.interrupt().restore(intStatus);
 		}
-		
+
 		public void freePage(UserKernel.Page p) {
 			Lib.assertTrue(usedPages!=null);
 			Lib.assertTrue(p!=null);
@@ -63,7 +111,7 @@ public class UserProcess {
 			freePages.push(p);
 			Machine.interrupt().restore(intStatus);
 		}
-		
+
 		public TranslationEntry getEntry(int vpn) {
 			for(TranslationEntry te: parentProcess.pageTable) {
 				if (vpn == te.vpn) {
@@ -73,7 +121,7 @@ public class UserProcess {
 			Lib.assertTrue(false); //should never ask to get an Entry in Page Table that isn't there
 			return null;
 		}
-		
+
 		public void exit() {
 			Lib.assertTrue(usedPages!=null);
 			boolean intStatus = Machine.interrupt().disable();
@@ -88,7 +136,7 @@ public class UserProcess {
 			Machine.interrupt().restore(intStatus);
 		}
 	}
-	
+
 	/**
 	 * Allocate a new process.
 	 */
@@ -98,6 +146,14 @@ public class UserProcess {
 		pageManager = new PageManager(UserKernel.freePages, this);
 		for (int i=0; i<numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+		
+		// Added code here.
+		processId = nextProcessId++;
+		status = Constants.STATUS_READY;
+		fileDescriptors = new FileDescriptorManager();
+		
+		childProcesses = new HashMap<Integer, UserProcess>();
+		parentProcessId = Constants.NO_PROCESS_ID;
 	}
 
 	/**
@@ -109,6 +165,25 @@ public class UserProcess {
 	 */
 	public static UserProcess newUserProcess() {
 		return (UserProcess)Lib.constructObject(Machine.getProcessClassName());
+	}
+	
+	/**
+	 * <p>Allocate and return a new process of the correct class.  The class name 
+	 * is specified by the <tt>nachos.conf</tt> key <tt>Kernel.processClassName</tt>. 
+	 * Atomically updates parent-child relationship between processes.
+	 * @param parentId is the parent's processID
+	 * @param parentProcess is the associated parent process
+	 * @return a new process of the correct class, with parent and child data appropriately 
+	 * populated.
+	 */
+	public static UserProcess newUserProcess(int parentId, UserProcess parentProcess) {
+		boolean interruptStatus = Machine.interrupt().disable();
+		UserProcess newProcess = newUserProcess();
+		newProcess.parentProcessId = parentId;	// Set parent.
+		newProcess.parentProcess = parentProcess;
+		newProcess.parentProcess.childProcesses.put(newProcess.processId, newProcess);	// Update parent's children.
+		Machine.interrupt().restore(interruptStatus);
+		return newProcess;
 	}
 
 	/**
@@ -259,18 +334,18 @@ public class UserProcess {
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
-		 	int bytesWritten = 0;
-			int dataIndex = offset - 1;
-			for (int i = 0; i < length; i++) {
-				TranslationEntry entry  = pageManager.getEntry(vaddr);
-				if (entry == null) { //Nothing more to write to in physical memory 
-					return bytesWritten;
-				}
-				Lib.assertTrue(!entry.readOnly);
-				memory[entry.ppn + (vaddr - entry.vpn)] = data[dataIndex];
-				dataIndex++;
-				bytesWritten++;
+		int bytesWritten = 0;
+		int dataIndex = offset - 1;
+		for (int i = 0; i < length; i++) {
+			TranslationEntry entry  = pageManager.getEntry(vaddr);
+			if (entry == null) { //Nothing more to write to in physical memory 
+				return bytesWritten;
 			}
+			Lib.assertTrue(!entry.readOnly);
+			memory[entry.ppn + (vaddr - entry.vpn)] = data[dataIndex];
+			dataIndex++;
+			bytesWritten++;
+		}
 		return 0;
 	}
 
@@ -433,6 +508,122 @@ public class UserProcess {
 		Lib.assertNotReached("Machine.halt() did not halt machine!");
 		return 0;
 	}
+	
+	// Part 3 System Calls
+	/**
+	 * handleExit() is the handler for an exit syscall.  It is responsible for closing any 
+	 * associated open files, updating the child's parent pointers, freeing up any held 
+	 * resources, and terminating the associated thread.
+	 * @param status is the status to be returned to the parent process.
+	 */
+	private void handleExit(int status) {
+		boolean interruptStatus = Machine.interrupt().disable();
+		
+		// Close all files in file descriptors.
+		fileDescriptors.exit();	
+		
+		// Clear all parent data for this process' children.
+		int numChildren = childProcesses.size();
+		UserProcess[] childProcessesList = childProcesses.keySet().toArray(new UserProcess[numChildren]);
+		for (UserProcess child : childProcessesList) {
+			child.resetParent();
+		}
+		
+		// Free up resources for this process and set appropriate statuses.
+		unloadSections();	
+		this.status = Constants.STATUS_EXITED;
+		parentProcess.status = status;	// TODO Is this what they mean by returning the status to the parent?
+		
+		Machine.interrupt().restore(interruptStatus);
+		
+		// Finish or terminate the thread.
+		if (processId == 0) {	// TODO Is this a valid assumption, that process 0 is always last to go?
+			Kernel.kernel.terminate();
+		} else {
+			KThread.finish();
+		}
+	}
+	
+	/**
+	 * handleJoin() is the handler for the join syscall.  After performing validation, it executes 
+	 * the joining and disowns the child to ensure that it is joined only once.
+	 * @param processId is the process ID for the child to be joined with.
+	 * @param statusAddr is the virtual address we are to write the child's exit status to.
+	 * @return an exit code indicating success or failure
+	 */
+	private int handleJoin(int processId, int statusAddr) {
+		UserProcess child = childProcesses.get(processId);
+		if (child == null) {
+			return Constants.NO_PROCESS_ID;
+		}
+		
+		boolean interruptStatus = Machine.interrupt().enabled();
+		try {
+			child.thread.join();	// Return immediately if child process is done, otherwise wait.
+			
+			interruptStatus = Machine.interrupt().disable();	// TODO Would a lock be better instead?
+			int childExitStatus = child.status;
+			child.resetParent();
+			childProcesses.remove(processId);
+			
+			ByteBuffer b = ByteBuffer.allocate(4);
+			b.putInt(childExitStatus);
+			int bytesTransferred = writeVirtualMemory(statusAddr, b.array());
+			if (bytesTransferred != 4) {
+				Machine.interrupt().restore(interruptStatus);
+				return Constants.JOIN_ERROR_CODE;
+			} else {
+				Machine.interrupt().restore(interruptStatus);
+				return Constants.JOIN_SUCCESS_CODE;
+			}
+			
+		} catch (Exception e) {
+			Machine.interrupt().restore(interruptStatus);
+			return Constants.JOIN_ERROR_CODE;
+		}
+	}
+	
+	/**
+	 * handleExec() is the handler method which processes the exec syscall.  It is responsible for 
+	 * validating arguments provided and executing the stored program in a child process.
+	 * @param fileAddr is the pointer to the file name in virtual memory
+	 * @param argc is the number of arguments to pass into the child process
+	 * @param argvAddr is an array of pointers to each argument
+	 * @return processId of the child process, or an error code if unsuccessful
+	 */
+	private int handleExec(int fileAddr, int argc, int[] argvAddr) {
+		// Retrieve and validate file name.
+		String filename = readVirtualMemoryString(fileAddr, Constants.MAX_ARG_LENGTH);
+		if (!filename.endsWith(".coff")) {
+			return Constants.EXEC_ERROR_CODE;
+		}
+		
+		// Retrieve and validate arguments.
+		if (argc < 0 || argc != argvAddr.length) {
+			return Constants.EXEC_ERROR_CODE;
+		}
+		String[] argValues = new String[argc];
+		for (int i = 0; i < argc; i++) {
+			argValues[i] = readVirtualMemoryString(argvAddr[i], Constants.MAX_ARG_LENGTH);
+		}
+		
+		// Create new child process, then execute.
+		UserProcess childProcess = newUserProcess(processId, this);
+		boolean execIsSuccessful = childProcess.execute(filename, argValues);
+		if (execIsSuccessful) {
+			return childProcess.processId;
+		} else {
+			return Constants.EXEC_ERROR_CODE;
+		}
+	}
+	
+	/**
+	 * resetParent() is a helper function which serves to reset the parent data.
+	 */
+	private void resetParent() {
+		parentProcessId = Constants.NO_PROCESS_ID;
+		parentProcess = null;
+	}
 
 
 	private static final int
@@ -517,24 +708,4 @@ public class UserProcess {
 			Lib.assertNotReached("Unexpected exception");
 		}
 	}
-
-	/** The program being run by this process. */
-	protected Coff coff;
-
-	/** This process's page table. */
-	protected TranslationEntry[] pageTable;
-	
-	protected PageManager pageManager;
-	
-	/** The number of contiguous pages occupied by the program. */
-	protected int numPages;
-
-	/** The number of pages in the program's stack. */
-	protected final int stackPages = 8;
-
-	private int initialPC, initialSP;
-	private int argc, argv;
-
-	private static final int pageSize = Processor.pageSize;
-	private static final char dbgProcess = 'a';
 }
