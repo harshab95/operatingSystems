@@ -84,8 +84,18 @@ public class AutoGrader {
 		else if(testName.equals("communicator"))
 			Communicator.selfTest();
 		else if(testName.equals("priority scheduler")) {
+			int testNum = 0;
 			if (testNumber != "")  {
-				PriorityScheduler.selfTest(Integer.parseInt(testNumber));
+				testNum = Integer.parseInt(testNumber);
+			}
+			switch (testNum) {
+			case 0:
+				PriorityScheduler.selfTest();
+				break;
+			case 1:
+				PriorityScheduler.selfTest1();
+			default:
+				break;
 			}
 		}
 		else if(testName.equals("boat")) {

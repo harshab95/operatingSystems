@@ -211,6 +211,7 @@ int close(int fileDescriptor);
  * until it is deleted.
  *
  * Returns 0 on success, or -1 if an error occurred.
+ *
  */
 int unlink(char *name);
 

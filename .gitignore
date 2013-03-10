@@ -1,6 +1,9 @@
+.gitignore
 .project
 .classpath
 *.class
 .settings/*
 bin/*
 .metadata
+"Operating System Concepts (8th Ed) - Gagne, Silberschatz, and Galvin.pdf"
+"Operating System Concepts (9th Ed) - Gagne, Silberschatz, and Galvin.pdf"
