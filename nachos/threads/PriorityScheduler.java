@@ -660,6 +660,12 @@ public class PriorityScheduler extends Scheduler {
 			//CHECK: Although it shouldn't (ask yourself why)!!
 			updateEffectivePriority(waitQueue.transferPriority);
 		}
+		
+		protected void joinUpdate(KThread pThread) {
+			Lib.assertTrue(pThread != null);
+			this.parents.add(pThread);
+			updateEffectivePriority(true);
+		}
 
 		/** The thread with which this object is associated. */	   
 		protected KThread thread;
@@ -675,7 +681,7 @@ public class PriorityScheduler extends Scheduler {
 		protected KThread child = null;
 		protected java.util.PriorityQueue<KThread> parents = null;
 	}
-
+	
 
 	/**
 	 * New class to be able to help keep track of what entries in localThreads
