@@ -93,7 +93,7 @@ public class AutoGrader {
 				PriorityScheduler.selfTest();
 				break;
 			case 1:
-				PriorityScheduler.selfTest1();
+//				PriorityScheduler.selfTest1();
 			default:
 				break;
 			}
