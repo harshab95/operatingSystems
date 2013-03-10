@@ -350,40 +350,55 @@ public class PriorityScheduler extends Scheduler {
 		public boolean highestPriorityValid() {
 			return currentThread != null;
 		}
+		
 		public int highestPriority() {
 			return highestPriority(null);
 		}
 		public int highestPriority(KThread excludedThread) {
 			int highestPr = priorityMinimum;
+			
+			/* 1st try: iterate. Error may be too slow 
 			for (PriorityQueueEntry pqe: waitingThreads) {
 				if (pqe.thread() != excludedThread) {
 					highestPr = Math.max(highestPr, pqe.threadState().getEffectivePriority());
 				}
+			}
+			*/
+			
+			/* 2nd try: just enforce that the waitingThreads is always properly updated */
+			if (!waitingThreads.isEmpty()) {
+				highestPr = Math.max(highestPr, waitingThreads.poll().threadState().getEffectivePriority());
 			}
 
 			// Q: Why does the order of my logic checks here matter?
 			if (currentThread != null && currentThread != excludedThread) {
 				highestPr = Math.max(highestPr, getThreadState(currentThread).getEffectivePriority());
 			}
+			
 			return highestPr;
 		}
 
 
-		private void refreshQueueOrder() {
-			Lib.assertTrue(waitingThreads != null);
-
-			PriorityQueueEntry[] waitingEntries = waitingThreads.toArray(new PriorityQueueEntry[0]);
-			for (int i = 0; i < waitingEntries.length; i++) {
-				PriorityQueueEntry pqe = waitingEntries[i];
-				KThread waitingThread = pqe.thread();
-				waitingThreads.remove(pqe);
-				waitingThreads.add(pqe);
-			}
-		}
+		/* Testing method used to ensure correctness in the priority queue. Removed because 
+		 * It is very inefficient
+		 */ 
+//		private void refreshQueueOrder() {
+//			Lib.assertTrue(waitingThreads != null);
+//
+//			PriorityQueueEntry[] waitingEntries = waitingThreads.toArray(new PriorityQueueEntry[0]);
+//			for (int i = 0; i < waitingEntries.length; i++) {
+//				PriorityQueueEntry pqe = waitingEntries[i];
+//				KThread waitingThread = pqe.thread();
+//				waitingThreads.remove(pqe);
+//				waitingThreads.add(pqe);
+//			}
+//		}
 
 		protected void updateCurrentThreadPriority_Recursive() {
+			Lib.assertTrue(Machine.interrupt().disabled());
 			if (currentThread == null) {
 				//Nothing to update
+				Lib.assertNotReached("Cannot call updateCurrentThreadPriority if currentThread == null");
 				return;
 			}
 
@@ -393,7 +408,7 @@ public class PriorityScheduler extends Scheduler {
 
 			//cts is currentThreadState
 			ThreadState cts = getThreadState(currentThread);
-			Lib.assertTrue(cts.parentQueues.contains(this)); //This thread must be a parent of current thread state
+			Lib.assertTrue(cts.parentQueues.contains(this)); //This queue must be a parent queue of current thread state
 
 			//Compare old with new priority
 			int oldEffectivePriority = cts.effectivePriority;
@@ -408,7 +423,10 @@ public class PriorityScheduler extends Scheduler {
 			PriorityQueue[] parentQueuesArray = cts.parentQueues.toArray(new PriorityQueue[0]);
 			for (PriorityQueue pq: parentQueuesArray) {
 				// Excludes currentThread from the highestPriority() search
-				highestPriority = Math.max(highestPriority, pq.highestPriority(currentThread));
+				if (pq.transferPriority) {
+					// Only update and get these priorities from parents that should transfer priority
+					highestPriority = Math.max(highestPriority, pq.highestPriority(currentThread));
+				}
 			}
 
 			cts.effectivePriority = highestPriority;
@@ -577,7 +595,9 @@ public class PriorityScheduler extends Scheduler {
 			
 			int highestPriority = this.priority;
 			for (PriorityQueue p: parentQueues) {
-				highestPriority = Math.max(highestPriority, p.highestPriority());
+				if (p.transferPriority) {
+					highestPriority = Math.max(highestPriority, p.highestPriority(this.thread));
+				}
 			}
 			
 			if (parentJoinee != null) {
