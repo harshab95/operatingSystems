@@ -11,6 +11,7 @@ import nachos.machine.*;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.concurrent.PriorityBlockingQueue;
 
 /**
@@ -118,7 +119,7 @@ public class PriorityScheduler extends Scheduler {
 		Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == ps.getThreadState(pq1high).getEffectivePriority());
 		Lib.assertTrue(pq1.nextThread() == pq1high);
 		Lib.assertTrue(ps.getThreadState(pq1low).getEffectivePriority() == 0);
-		
+
 		System.out.println("--------- Test 3 Priority Donation (Chain 1 queue) simple passed");
 
 		System.out.println("\n --------- Test 4 Lock stress test");
@@ -157,9 +158,9 @@ public class PriorityScheduler extends Scheduler {
 			stressedThreads[i].join();
 		}
 	}
-	
+
 	public static void selfTest1() {
-		
+
 	}
 	/**
 	 * Allocate a new priority scheduler.
@@ -276,7 +277,7 @@ public class PriorityScheduler extends Scheduler {
 			Lib.assertTrue(thread != null);
 			Lib.assertTrue(getThreadState(thread)!= null);
 			/* Correctness and sanity checks */
-//			Lib.assertTrue(thread != currentThread); perhaps okay if running thread wants to get back on readyQueue?
+			//			Lib.assertTrue(thread != currentThread); perhaps okay if running thread wants to get back on readyQueue?
 
 			if (currentThread == null) {
 				Lib.assertTrue(waitingThreads.isEmpty());
@@ -284,7 +285,7 @@ public class PriorityScheduler extends Scheduler {
 				return;
 			}
 			//FIXME will need change this in case autograder complains again
-//			Lib.assertTrue(currentThread != null);
+			//			Lib.assertTrue(currentThread != null);
 
 			PriorityQueueEntry pqe = new PriorityQueueEntry(getThreadState(thread), Machine.timer().getTime());
 			waitingThreads.add(pqe);
@@ -350,21 +351,21 @@ public class PriorityScheduler extends Scheduler {
 		public boolean highestPriorityValid() {
 			return currentThread != null;
 		}
-		
+
 		public int highestPriority() {
 			return highestPriority(null);
 		}
 		public int highestPriority(KThread excludedThread) {
 			int highestPr = priorityMinimum;
-			
+
 			/* 1st try: iterate. Error may be too slow 
 			for (PriorityQueueEntry pqe: waitingThreads) {
 				if (pqe.thread() != excludedThread) {
 					highestPr = Math.max(highestPr, pqe.threadState().getEffectivePriority());
 				}
 			}
-			*/
-			
+			 */
+
 			/* 2nd try: just enforce that the waitingThreads is always properly updated */
 			if (!waitingThreads.isEmpty()) {
 				highestPr = Math.max(highestPr, waitingThreads.peek().threadState().getEffectivePriority());
@@ -374,7 +375,7 @@ public class PriorityScheduler extends Scheduler {
 			if (currentThread != null && currentThread != excludedThread) {
 				highestPr = Math.max(highestPr, getThreadState(currentThread).getEffectivePriority());
 			}
-			
+
 			return highestPr;
 		}
 
@@ -382,25 +383,38 @@ public class PriorityScheduler extends Scheduler {
 		/* Testing method used to ensure correctness in the priority queue. Removed because 
 		 * It is very inefficient
 		 */ 
-//		private void refreshQueueOrder() {
-//			Lib.assertTrue(waitingThreads != null);
-//
-//			PriorityQueueEntry[] waitingEntries = waitingThreads.toArray(new PriorityQueueEntry[0]);
-//			for (int i = 0; i < waitingEntries.length; i++) {
-//				PriorityQueueEntry pqe = waitingEntries[i];
-//				KThread waitingThread = pqe.thread();
-//				waitingThreads.remove(pqe);
-//				waitingThreads.add(pqe);
-//			}
-//		}
+		//		private void refreshQueueOrder() {
+		//			Lib.assertTrue(waitingThreads != null);
+		//
+		//			PriorityQueueEntry[] waitingEntries = waitingThreads.toArray(new PriorityQueueEntry[0]);
+		//			for (int i = 0; i < waitingEntries.length; i++) {
+		//				PriorityQueueEntry pqe = waitingEntries[i];
+		//				KThread waitingThread = pqe.thread();
+		//				waitingThreads.remove(pqe);
+		//				waitingThreads.add(pqe);
+		//			}
+		//		}
 
 		protected void updateCurrentThreadPriority_Recursive() {
+			updateCurrentThreadPriority_Recursive(new HashSet<KThread>());
+		}
+		
+		protected void updateCurrentThreadPriority_Recursive(HashSet<KThread> updatedThreads) {
 			Lib.assertTrue(Machine.interrupt().disabled());
 			if (currentThread == null) {
 				//Nothing to update
 				Lib.assertNotReached("Cannot call updateCurrentThreadPriority if currentThread == null");
 				return;
 			}
+
+			// Not end up in an infinite loop
+			if (updatedThreads.contains(currentThread)) {
+				Lib.assertNotReached();
+				return;
+			} else {
+				updatedThreads.add(currentThread);
+			}
+
 
 			if (transferPriority == false) {
 				return;
@@ -512,7 +526,7 @@ public class PriorityScheduler extends Scheduler {
 			this.priority = priority;
 			int oldEffectivePriority = this.effectivePriority;
 			this.effectivePriority = Math.max(priority, effectivePriority);
-			
+
 			if (oldEffectivePriority != effectivePriority && queueWaitingOn != null) {
 				queueWaitingOn.updateCurrentThreadPriority_Recursive();
 			}
@@ -558,7 +572,7 @@ public class PriorityScheduler extends Scheduler {
 			 * not null: was waiting and now that I have it, reset queueWaitingOn to null
 			 */
 			queueWaitingOn = null; 
-			
+
 			Lib.assertTrue(queueWaitingOn == null); // For super safety precaution
 			waitQueue.updateCurrentThreadPriority_Recursive(); //update my own priority 
 
@@ -580,7 +594,7 @@ public class PriorityScheduler extends Scheduler {
 				queueWaitingOn.updateCurrentThreadPriority_Recursive();
 			} 
 		}
-		
+
 		/** ONLY TO BE CALLED IN NEXT THREAD AFTER A THREAD HAS BEEN DETHRONED FROM BEING A CURRENT THREAD
 		 * Thus I am no longer in a queue and do not need to heed transferPriority. 
 		 * Ensure that I have removed the queue from parentQueues of the PriorityQueue I jsut got dethroned from.
@@ -590,20 +604,25 @@ public class PriorityScheduler extends Scheduler {
 		 * our priority before that.
 		 */
 		protected void refreshEffectivePriorityAfterRemoval() {
-//			Lib.assertTrue(queueWaitingOn == null); removed check 
-//			as currentThread might be waiting for another resource. Imagine acquired C -> release B
-			
+			//			Lib.assertTrue(queueWaitingOn == null); removed check 
+			//			as currentThread might be waiting for another resource. Imagine acquired C -> release B
+
+			int oldEffectivePriority = this.effectivePriority;
 			int highestPriority = this.priority;
 			for (PriorityQueue p: parentQueues) {
 				if (p.transferPriority) {
 					highestPriority = Math.max(highestPriority, p.highestPriority(this.thread));
 				}
 			}
-			
+
 			if (parentJoinee != null) {
 				highestPriority = Math.max(highestPriority, getThreadState(parentJoinee).getEffectivePriority());
 			}
 			this.effectivePriority = highestPriority;
+			
+			if (this.effectivePriority != oldEffectivePriority && this.queueWaitingOn != null) { 
+				queueWaitingOn.updateCurrentThreadPriority_Recursive();
+			}
 		}
 
 		/** The thread with which this object is associated. */	   
