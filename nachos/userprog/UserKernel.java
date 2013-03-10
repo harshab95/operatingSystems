@@ -4,10 +4,31 @@ import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
 
+import java.util.*;
+
 /**
  * A kernel that can support multiple user processes.
  */
 public class UserKernel extends ThreadedKernel {
+	
+	public class Page {
+		int ppn;
+		boolean valid, used, writable, readOnly;
+		public Page(int ppn, boolean valid, boolean used, boolean writable, boolean readOnly) {
+			this.ppn = ppn;
+			this.valid = valid;
+			this.used = used;
+			this.writable = writable;
+			this.readOnly = readOnly;
+		}
+		
+		public void free() {
+			Lib.assertTrue(this.used);
+			this.valid = false;
+			this.used = false;
+		}
+	}
+	
 	/**
 	 * Allocate a new user kernel.
 	 */
@@ -110,6 +131,8 @@ public class UserKernel extends ThreadedKernel {
 	/** Globally accessible reference to the synchronized console. */
 	public static SynchConsole console;
 
+	public static LinkedList<Page> freePages = new LinkedList<Page>();
+	
 	// dummy variables to make javac smarter
 	private static Coff dummy1 = null;
 }

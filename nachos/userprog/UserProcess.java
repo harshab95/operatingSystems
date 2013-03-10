@@ -5,7 +5,7 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
-
+import java.util.*;
 /**
  * Encapsulates the state of a user process that is not contained in its
  * user thread (or threads). This includes its address translation state, a
@@ -19,12 +19,83 @@ import java.io.EOFException;
  * @see	nachos.network.NetProcess
  */
 public class UserProcess {
+	
+	public class PageManager {
+		public static final int INVALID_PAGE = -1;
+		public LinkedList<UserKernel.Page> freePages = null;
+		public LinkedList<UserKernel.Page> usedPages = null;
+		public UserProcess parentProcess = null;
+		
+		public PageManager(LinkedList<UserKernel.Page> globalFreePages, UserProcess uProcess) {
+			Lib.assertTrue(globalFreePages!=null);
+			Lib.assertTrue(uProcess!=null);
+			this.freePages = globalFreePages;
+			this.parentProcess = uProcess;
+			usedPages = new LinkedList<UserKernel.Page>();
+		}
+		
+		public UserKernel.Page getFreePage() {
+			Lib.assertTrue(freePages!=null);
+			boolean intStatus = Machine.interrupt().disable();
+			if (!freePages.isEmpty()) {
+				UserKernel.Page page = freePages.poll();
+				Machine.interrupt().restore(intStatus);
+				return page;
+			} else {
+				Machine.interrupt().restore(intStatus);
+				return null;
+			}
+		}
+		
+		public void addFreePage(UserKernel.Page p) {
+			Lib.assertTrue(freePages!=null);
+			Lib.assertTrue(p!=null);
+			boolean intStatus = Machine.interrupt().disable();
+			freePages.push(p);
+			Machine.interrupt().restore(intStatus);
+		}
+		
+		public void freePage(UserKernel.Page p) {
+			Lib.assertTrue(usedPages!=null);
+			Lib.assertTrue(p!=null);
+			boolean intStatus = Machine.interrupt().disable();
+			p.free();
+			freePages.push(p);
+			Machine.interrupt().restore(intStatus);
+		}
+		
+		public TranslationEntry getEntry(int vpn) {
+			for(TranslationEntry te: parentProcess.pageTable) {
+				if (vpn == te.vpn) {
+					return te;
+				}
+			}
+			Lib.assertTrue(false); //should never ask to get an Entry in Page Table that isn't there
+			return null;
+		}
+		
+		public void exit() {
+			Lib.assertTrue(usedPages!=null);
+			boolean intStatus = Machine.interrupt().disable();
+			for(TranslationEntry te: parentProcess.pageTable) {
+				for(int i=0; i<usedPages.size(); i++) {
+					UserKernel.Page page = usedPages.get(i);
+					if (te.ppn == page.ppn) {
+						freePage(page);
+					}
+				}
+			}
+			Machine.interrupt().restore(intStatus);
+		}
+	}
+	
 	/**
 	 * Allocate a new process.
 	 */
 	public UserProcess() {
 		int numPhysPages = Machine.processor().getNumPhysPages();
 		pageTable = new TranslationEntry[numPhysPages];
+		pageManager = new PageManager(UserKernel.freePages, this);
 		for (int i=0; i<numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
 	}
@@ -134,12 +205,22 @@ public class UserProcess {
 		byte[] memory = Machine.processor().getMemory();
 
 		// for now, just assume that virtual addresses equal physical addresses
-		if (vaddr < 0 || vaddr >= memory.length)
+		if (vaddr < 0 || vaddr >= memory.length) {
 			return 0;
-
-		int amount = Math.min(length, memory.length-vaddr);
-		System.arraycopy(memory, vaddr, data, offset, amount);
-		return amount;
+		}
+		int bytesRead = 0;
+		int dataIndex = offset - 1;
+		for (int i = 0; i < length; i++) {
+			TranslationEntry entry  = pageManager.getEntry(vaddr);
+			if (entry == null) { //Nothing more to read
+				return bytesRead;
+			}
+			Lib.assertTrue(!entry.readOnly);
+			data[dataIndex] = memory[entry.ppn + (vaddr - entry.vpn)];
+			dataIndex++;
+			bytesRead++;
+		}
+		return 0;
 	}
 
 	/**
@@ -178,11 +259,19 @@ public class UserProcess {
 		// for now, just assume that virtual addresses equal physical addresses
 		if (vaddr < 0 || vaddr >= memory.length)
 			return 0;
-
-		int amount = Math.min(length, memory.length-vaddr);
-		System.arraycopy(data, offset, memory, vaddr, amount);
-
-		return amount;
+		 	int bytesWritten = 0;
+			int dataIndex = offset - 1;
+			for (int i = 0; i < length; i++) {
+				TranslationEntry entry  = pageManager.getEntry(vaddr);
+				if (entry == null) { //Nothing more to write to in physical memory 
+					return bytesWritten;
+				}
+				Lib.assertTrue(!entry.readOnly);
+				memory[entry.ppn + (vaddr - entry.vpn)] = data[dataIndex];
+				dataIndex++;
+				bytesWritten++;
+			}
+		return 0;
 	}
 
 	/**
@@ -296,9 +385,9 @@ public class UserProcess {
 
 			for (int i=0; i<section.getLength(); i++) {
 				int vpn = section.getFirstVPN()+i;
-
+				TranslationEntry tEntry = pageManager.getEntry(vpn);
 				// for now, just assume virtual addresses=physical addresses
-				section.loadPage(i, vpn);
+				section.loadPage(i, tEntry.ppn);
 			}
 		}
 
@@ -434,6 +523,9 @@ public class UserProcess {
 
 	/** This process's page table. */
 	protected TranslationEntry[] pageTable;
+	
+	protected PageManager pageManager;
+	
 	/** The number of contiguous pages occupied by the program. */
 	protected int numPages;
 
