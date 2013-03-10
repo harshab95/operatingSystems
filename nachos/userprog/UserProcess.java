@@ -5,6 +5,130 @@ import nachos.threads.*;
 import nachos.userprog.*;
 
 import java.io.EOFException;
+import java.util.*;
+
+
+
+
+/**
+ * The new FileDescriptorManager class
+ * handles all file operations for a given UserProcess
+ * 
+ * It keeps track for a single open file: 
+ * 		the fileDescriptor
+ * 		the fileName
+ * 		a pointer to the OpenFile object. 
+ * 
+ * There can only be 16 files open at any given time 
+ * by a FileDescriptorManager, and hence a UserProcess.
+ */
+class FileDescriptorManager {	
+	public final static int INVALID_DESCRIPTOR = -2;
+	LinkedList<Integer> freeDescriptors;
+	LinkedList<FileEntry> usedDescriptors;
+	
+	private class FileEntry {
+		private int fileDescriptor = INVALID_DESCRIPTOR;
+		private String fileName;
+		private Object filePointer;
+
+		public FileEntry(int descr, String fileName, Object filePointer) {
+			filePointer = UserKernel.fileSystem.open(fileName, true);
+			assert filePointer != null;
+
+			this.fileDescriptor = descr;
+			this.fileName = fileName;
+			this.filePointer = filePointer;
+		}
+	}
+
+	public FileDescriptorManager() {
+		LinkedList<Integer> freeDescriptors = new LinkedList<Integer>();
+		LinkedList<FileEntry> usedDescriptors = new LinkedList<FileEntry>();
+		
+		//initialize freeDescriptors with (0,1,...15) with 0 being first thing to pop;
+		for (int i = 0; i < 16; i++) {
+			freeDescriptors.add(new Integer(i));
+		}
+		int descr0 = freeDescriptors.pop();
+		int descr1 = freeDescriptors.pop();
+		FileEntry stdinNode = new FileEntry(descr0,"stdin",UserKernel.console.openForReading());
+		FileEntry stdoutNode = new FileEntry(descr1,"stdin",UserKernel.console.openForReading());
+		usedDescriptors.add(stdinNode);	
+		usedDescriptors.add(stdoutNode);
+	}
+
+	public int addFile(String fileName, boolean create) {
+		//make sure there's at least 1 free fileDescriptor to pop
+		Lib.assertTrue(freeDescriptors.peek() != null);
+
+		OpenFile filePointer = UserKernel.fileSystem.open(fileName, create);
+		if (filePointer == null) {
+			return -1;
+		}
+
+		FileEntry entry  = new FileEntry(freeDescriptors.pop(), fileName, filePointer);
+		usedDescriptors.add(entry);
+		return entry.fileDescriptor;
+	}
+	
+	//added by Z
+	public int closeFile(int descriptor) {
+		int i = 0;
+		for (FileEntry file : usedDescriptors) {
+			if (file.fileDescriptor == descriptor) {
+				usedDescriptors.remove(i);
+			}
+			i++;
+		}
+		return descriptor;
+	}
+
+
+	public int closeFile(String fileName) { //returned void in design doc
+		//remove fileName node from usedDescriptors
+		FileEntry justReleasedFD = null;
+		int i = 0;
+		for (FileEntry file : usedDescriptors) {
+			if (file.fileName.equals(fileName)) {
+				justReleasedFD = usedDescriptors.remove(i);
+			}
+			i++;
+		}
+		/*
+		for (int i = 0; i < size(usedDescriptors); i++) {
+			if (usedDescriptors.get(i).fileName.equals(fileName)) {
+				justReleasedFD = usedDescriptors.remove(i);
+			}
+		}
+		*/
+		//freeDescriptors.add(just released fileDescriptor);
+		freeDescriptors.add(new Integer(justReleasedFD.fileDescriptor));
+		return justReleasedFD.fileDescriptor; //added by Z
+	}
+
+	public Object getFile(String fileName) {
+		//return (node with fileName == node.fileName).filePointer;
+		FileEntry fileEntryToGet = null;
+		int i = 0;
+		for (FileEntry file : usedDescriptors) {
+			if (file.fileName.equals(fileName)) {
+				fileEntryToGet = usedDescriptors.get(i);
+			}
+			i++;
+		}
+		return fileEntryToGet;
+	}
+
+	public void exit() { 
+		for (FileEntry file : usedDescriptors) {
+		    //close the file;
+			closeFile(file.fileName);
+		}
+	}
+}   
+
+
 
 /**
  * Encapsulates the state of a user process that is not contained in its
@@ -19,6 +143,13 @@ import java.io.EOFException;
  * @see	nachos.network.NetProcess
  */
 public class UserProcess {
+	
+	//added fields
+	public final static int INVALID_SYSCALL = -1;
+	public static UserProcess rootProcess  = null;
+	private FileDescriptorManager fileManager  = null;
+	//
+	
 	/**
 	 * Allocate a new process.
 	 */
@@ -27,6 +158,13 @@ public class UserProcess {
 		pageTable = new TranslationEntry[numPhysPages];
 		for (int i=0; i<numPhysPages; i++)
 			pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+		//new
+		if (rootProcess == null) {
+			//UserProcess.rootThread = this;
+			UserProcess.rootProcess = this;
+		}
+		fileManager = new FileDescriptorManager();
+		//end new
 	}
 
 	/**
@@ -345,6 +483,79 @@ public class UserProcess {
 		return 0;
 	}
 
+	//start of new handle methods
+	private int handleCreat(int nameLocation) {
+		String nameString = readVirtualMemoryString(nameLocation, 256);
+		if (nameString != null) {
+			return INVALID_SYSCALL; //we couldn’t get the name of the file from memory
+		}
+		//actually tell the fileSystem to open the file
+		OpenFile file = UserKernel.fileSystem.open(nameString, true);
+		int fileDescriptor = fileManager.addFile(file.getName(), true);//?
+		if (file is not stream) {
+			return fileDescriptor;
+		}
+		return INVALID_SYSCALL; //File is a stream
+	}                      
+
+
+	private int handleOpen(int name) {
+		String nameString = readVirtualMemoryString(name, 256);
+		if (nameString == null) {
+			return INVALID_SYSCALL; //we couldn’t get the name of the file from memory
+		}
+		else if (file is stream) {
+			return INVALID_SYSCALL;
+		}
+
+		OpenFile file = UserKernel.fileSystem.open(nameString , false);
+		if (file == null) {
+			return -1;
+		}   	
+		int fileDes = fileManager.addFile(nameString, false);//?
+		return fileDes;
+	}
+	          
+	private int handleRead(int fileDescriptor, void *buffer, int count) {
+		if (fileDescriptor invalid || buffer read only || network stream terminated) {
+			return INVALID_SYSCALL;
+		}
+		if (file not open) {
+			return INVALID_SYSCALL;
+			//TODO if this is correct behavior. Assume can't read unless already open
+		}
+		return fileManager.getFile(fileDescriptor).read(buffer, 0, count);
+	}
+
+
+	private int handleWrite(int fileDescriptor, void *buffer, int count) {
+		if (fileDescriptor invalid || buffer invalid || network stream terminated ) {
+			return INVALID_SYSCALL;
+		}
+		int bytesRead = fileManager.getFile(fileDescriptor).write(buffer, 0, count);
+		if (bytesRead < count) {
+			//ERROR;
+			//TODO how to handle errors
+			return INVALID_SYSCALL;
+		}
+		return bytesRead;
+	}
+
+	private int handleClose(int fileDescriptor) {
+		if (fileDescriptor invalid) {
+			//TODO handle other types of error?
+			return INVALID_SYSCALL;
+		}
+
+		fileManager.closeFile(fileDescriptor);
+		return 0;
+	}
+
+	private int handleUnlink(String name) {
+		int returnValue = fileManager.closeFile(name);//changed from unlink(name)
+		return returnValue;
+	}
+	//end of added handles
 
 	private static final int
 	syscallHalt = 0,
