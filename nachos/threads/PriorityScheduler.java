@@ -367,7 +367,7 @@ public class PriorityScheduler extends Scheduler {
 			
 			/* 2nd try: just enforce that the waitingThreads is always properly updated */
 			if (!waitingThreads.isEmpty()) {
-				highestPr = Math.max(highestPr, waitingThreads.poll().threadState().getEffectivePriority());
+				highestPr = Math.max(highestPr, waitingThreads.peek().threadState().getEffectivePriority());
 			}
 
 			// Q: Why does the order of my logic checks here matter?
